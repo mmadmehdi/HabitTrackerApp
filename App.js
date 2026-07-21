@@ -23,9 +23,27 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
+import {
+  Check,
+  Plus,
+  Settings,
+  ArrowRight,
+  Edit3,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  X,
+  Clock,
+  Bell,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react-native';
 
 /* ============================================================
-   CONSTANTS
+   CONSTANTS & APPLE HIG DESIGN SYSTEM
    ============================================================ */
 
 const STORAGE_KEY = '@habit_tracker_data_v2';
@@ -48,34 +66,35 @@ Notifications.setNotificationHandler({
   }),
 });
 
-/* ---------- Premium midnight design system ---------- */
+/* ---------- Apple HIG Midnight Color Palette ---------- */
 const COLORS = {
-  bg: '#000000',
-  card: '#1C1C1E',
-  cardBorder: 'rgba(255,255,255,0.09)',
-  input: '#2C2C2E',
+  bg: '#000000',                           // Pure iOS Pitch Black
+  card: '#1C1C1E',                         // iOS Secondary System Background
+  cardBorder: 'rgba(255, 255, 255, 0.08)',   // Ultra-fine stroke
+  cardSurface: '#2C2C2E',                  // iOS Tertiary Background
+  input: '#2C2C2E',                        // iOS Form Surface
 
-  primary: '#0A84FF',
-  primarySoft: 'rgba(10,132,255,0.16)',
+  primary: '#0A84FF',                      // iOS System Electric Blue
+  primarySoft: 'rgba(10, 132, 255, 0.15)',
 
-  success: '#63E6D8',
-  successSoft: 'rgba(99,230,216,0.14)',
-  successDeep: '#0F3D38',
+  success: '#30D158',                      // iOS System Mint Green
+  successSoft: 'rgba(48, 209, 88, 0.15)',
+  successDeep: '#0D2D1B',
 
-  error: '#FF453A',
-  errorSoft: 'rgba(255,69,58,0.14)',
+  error: '#FF453A',                        // iOS System Coral Red
+  errorSoft: 'rgba(255, 69, 58, 0.15)',
 
-  today: '#FF9F0A',
-  todaySoft: 'rgba(255,159,10,0.16)',
+  today: '#FF9F0A',                        // iOS System Amber / Orange
+  todaySoft: 'rgba(255, 159, 10, 0.15)',
 
-  text: '#FFFFFF',
-  subtext: 'rgba(235,235,245,0.60)',
-  dim: 'rgba(235,235,245,0.30)',
+  text: '#FFFFFF',                         // Primary Label
+  subtext: 'rgba(235, 235, 245, 0.60)',    // Secondary Label
+  dim: 'rgba(235, 235, 245, 0.30)',        // Tertiary Label
 
-  overlay: 'rgba(0,0,0,0.78)',
+  overlay: 'rgba(0, 0, 0, 0.78)',          // Backdrop
 };
 
-const WEEKDAYS_FA = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']; // 0=شنبه … 6=جمعه
+const WEEKDAYS_FA = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 const WEEKDAYS_FA_DISPLAY = [...WEEKDAYS_FA].reverse();
 const WEEKDAYS_FULL_FA = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 const MONTHS_FA = [
@@ -84,7 +103,7 @@ const MONTHS_FA = [
 ];
 
 /* ============================================================
-   HELPERS
+   JALALI & MATH HELPERS
    ============================================================ */
 
 function div(a, b) { return Math.floor(a / b); }
@@ -98,8 +117,6 @@ function toPersianDigits(input) {
   const map = { '0': '۰', '1': '۱', '2': '۲', '3': '۳', '4': '۴', '5': '۵', '6': '۶', '7': '۷', '8': '۸', '9': '۹' };
   return str.replace(/[0-9]/g, (d) => map[d]);
 }
-
-/* ---------- تبدیل شمسی <-> میلادی ---------- */
 
 function gregorianToJalali(gy, gm, gd) {
   const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
@@ -182,7 +199,7 @@ function jalaliMonthLength(jy, jm) {
 function firstWeekdayOfJalaliMonth(jy, jm) {
   const [gy, gm, gd] = jalaliToGregorian(jy, jm, 1);
   const jsDay = new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay();
-  return (jsDay + 1) % 7; // 0 = شنبه
+  return (jsDay + 1) % 7;
 }
 
 function getTodayJalali() {
@@ -384,7 +401,7 @@ async function sendTestHabitNotification(habits, categories) {
 }
 
 /* ============================================================
-   REUSABLE UI PIECES
+   APPLE TACTILE MICRO-INTERACTION COMPONENTS
    ============================================================ */
 
 const AnimatedPressable = memo(function AnimatedPressable({
@@ -394,7 +411,7 @@ const AnimatedPressable = memo(function AnimatedPressable({
   onLongPress,
   delayLongPress,
   disabled,
-  scaleTo = 0.97,
+  scaleTo = 0.96,
   hitSlop,
 }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -403,9 +420,9 @@ const AnimatedPressable = memo(function AnimatedPressable({
     Animated.spring(scale, {
       toValue: scaleTo,
       useNativeDriver: true,
-      stiffness: 420,
-      damping: 30,
-      mass: 1,
+      stiffness: 450,
+      damping: 28,
+      mass: 0.8,
     }).start();
   }, [scale, scaleTo]);
 
@@ -413,15 +430,15 @@ const AnimatedPressable = memo(function AnimatedPressable({
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,
-      stiffness: 420,
-      damping: 30,
-      mass: 1,
+      stiffness: 450,
+      damping: 28,
+      mass: 0.8,
     }).start();
   }, [scale]);
 
   return (
     <TouchableOpacity
-      activeOpacity={0.85}
+      activeOpacity={0.88}
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={delayLongPress}
@@ -469,7 +486,7 @@ const ScheduleChip = memo(function ScheduleChip({ category }) {
 });
 
 /* ============================================================
-   DETAIL SCREEN
+   DETAIL SCREEN (APPLE NATIVE DESIGN WITH LUCIDE)
    ============================================================ */
 
 const DayCell = memo(function DayCell({ day, dayKey, isToday, status, dayIsScheduled, onLongPressDay }) {
@@ -501,10 +518,10 @@ const DayCell = memo(function DayCell({ day, dayKey, isToday, status, dayIsSched
           {toPersianDigits(day)}
         </Text>
         {status === 'success' && (
-          <Text style={[styles.dayMark, { color: COLORS.success }]}>✓</Text>
+          <Check size={11} color={COLORS.success} strokeWidth={3} style={{ marginTop: -2 }} />
         )}
         {status === 'fail' && dayIsScheduled && (
-          <Text style={[styles.dayMark, { color: COLORS.error }]}>✕</Text>
+          <X size={11} color={COLORS.error} strokeWidth={3} style={{ marginTop: -2 }} />
         )}
       </View>
     </TouchableOpacity>
@@ -638,16 +655,16 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
   const todayProgress = (habit.progress && habit.progress[todayKey]) || 0;
   const remaining = habit.goal > 0 ? Math.max(0, habit.goal - todayProgress) : 0;
 
-  const successLabel = hasDayRestriction ? 'موفقیت از روزهای برنامه‌ریزی' : 'موفقیت از روزهای ایجاد';
-  const failLabel = hasDayRestriction ? 'شکست از روزهای برنامه‌ریزی' : 'شکست از روزهای ایجاد';
-  const createdLabel = hasDayRestriction ? 'روزهای برنامه‌ریزی‌شده' : 'روزهای ایجاد شده';
+  const successLabel = hasDayRestriction ? 'موفقیت در روزهای فعال' : 'کل موفقیت‌ها';
+  const failLabel = hasDayRestriction ? 'شکست در روزهای فعال' : 'کل شکست‌ها';
+  const createdLabel = hasDayRestriction ? 'روزهای برنامه‌ریزی' : 'روزهای سپری شده';
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
       <View style={styles.detailHeader}>
         <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>➔</Text>
+          <ArrowRight size={20} color={COLORS.text} />
         </TouchableOpacity>
         <View style={styles.detailHeaderTextWrap}>
           <Text style={styles.detailTitle} numberOfLines={1}>
@@ -658,7 +675,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
           </Text>
         </View>
         <TouchableOpacity onPress={onEdit} activeOpacity={0.7} style={styles.editBtn}>
-          <Text style={styles.editBtnText}>✎</Text>
+          <Edit3 size={18} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
@@ -699,13 +716,13 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
         <View style={styles.calendarCard}>
           <View style={styles.calendarNavRow}>
             <TouchableOpacity onPress={goNextMonth} activeOpacity={0.7} style={styles.calendarNavBtn}>
-              <Text style={styles.calendarNavBtnText}>›</Text>
+              <ChevronRight size={20} color={COLORS.text} />
             </TouchableOpacity>
             <Text style={styles.calendarMonthLabel}>
               {MONTHS_FA[view.jm - 1]} {toPersianDigits(view.jy)}
             </Text>
             <TouchableOpacity onPress={goPrevMonth} activeOpacity={0.7} style={styles.calendarNavBtn}>
-              <Text style={styles.calendarNavBtnText}>‹</Text>
+              <ChevronLeft size={20} color={COLORS.text} />
             </TouchableOpacity>
           </View>
 
@@ -786,7 +803,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
                 activeOpacity={0.7}
                 onPress={() => onBumpProgress(habit.id, todayKey, 1, habit.goal)}
               >
-                <Text style={styles.goalStepBtnText}>+</Text>
+                <Plus size={20} color={COLORS.primary} strokeWidth={2.5} />
               </TouchableOpacity>
 
               <View style={styles.goalCenter}>
@@ -797,8 +814,8 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
                 </Text>
                 <Text style={styles.goalRemaining}>
                   {remaining > 0
-                    ? `${toPersianDigits(remaining)} بار تا تکمیل هدف مانده`
-                    : 'هدف امروز کامل شد 🎉'}
+                    ? `${toPersianDigits(remaining)} بار تا تکمیل هدف`
+                    : 'هدف امروز تکمیل شد 🎉'}
                 </Text>
               </View>
 
@@ -819,7 +836,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
           </Text>
           {hasDayRestriction && !todayIsScheduled && (
             <Text style={styles.actionHintText}>
-              این عادت امروز برنامه‌ریزی نشده است؛ فقط می‌توانید موفقیت را ثبت کنید و ثبت شکست در این روز انجام نمی‌شود.
+              این عادت برای امروز برنامه‌ریزی نشده است.
             </Text>
           )}
           <View style={styles.actionButtonsRow}>
@@ -867,10 +884,12 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
         </View>
 
         <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={confirmDelete}>
+          <Trash2 size={18} color={COLORS.error} style={{ marginLeft: 8 }} />
           <Text style={styles.deleteBtnText}>حذف کامل این عادت</Text>
         </TouchableOpacity>
       </ScrollView>
 
+      {/* iOS Action Sheet Style Day Menu */}
       <Modal
         visible={dayMenu.visible}
         animationType="fade"
@@ -883,7 +902,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
           onPress={closeDayMenu}
         >
           <View style={styles.dayMenuCard}>
-            <Text style={styles.dayMenuTitle}>ویرایش وضعیت این روز</Text>
+            <Text style={styles.dayMenuTitle}>ویرایش وضعیت روز</Text>
 
             <TouchableOpacity
               style={[styles.dayMenuOption, styles.dayMenuOptionSuccess]}
@@ -926,7 +945,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
 });
 
 /* ============================================================
-   HOME SCREEN
+   HOME SCREEN (APPLE INSET GROUPED STYLE WITH LUCIDE ICONS)
    ============================================================ */
 
 const HabitCard = memo(function HabitCard({
@@ -985,7 +1004,7 @@ const HabitCard = memo(function HabitCard({
   return (
     <AnimatedPressable
       style={[styles.habitCard, isCompletedToday && styles.habitCardCompleted]}
-      scaleTo={0.98}
+      scaleTo={0.97}
       onPress={reorderMode ? undefined : handlePress}
       onLongPress={onLongPress}
       delayLongPress={450}
@@ -1011,7 +1030,8 @@ const HabitCard = memo(function HabitCard({
           )}
           {isCompletedToday && !reorderMode && (
             <View style={styles.completedBadge}>
-              <Text style={styles.completedBadgeText}>✓ امروز انجام شد</Text>
+              <Check size={12} color={COLORS.success} strokeWidth={3} />
+              <Text style={styles.completedBadgeText}>تکمیل شد</Text>
             </View>
           )}
         </View>
@@ -1021,7 +1041,7 @@ const HabitCard = memo(function HabitCard({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={styles.cardEditBtn}
           >
-            <Text style={styles.cardEditBtnText}>✎</Text>
+            <Edit3 size={15} color={COLORS.subtext} />
           </TouchableOpacity>
         )}
       </View>
@@ -1039,15 +1059,15 @@ const HabitCard = memo(function HabitCard({
             disabled={isLast}
             onPress={handleMoveDown}
           >
-            <Text style={styles.reorderBtnText}>▾</Text>
+            <ChevronDown size={20} color={COLORS.primary} />
           </TouchableOpacity>
-          <Text style={styles.reorderHint}>برای جابه‌جایی از دکمه‌ها استفاده کنید</Text>
+          <Text style={styles.reorderHint}>جابه‌جایی موقعیت</Text>
           <TouchableOpacity
             style={[styles.reorderBtn, isFirst && styles.reorderBtnDisabled]}
             disabled={isFirst}
             onPress={handleMoveUp}
           >
-            <Text style={styles.reorderBtnText}>▴</Text>
+            <ChevronUp size={20} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
       ) : (
@@ -1173,7 +1193,7 @@ const CategoryTab = memo(function CategoryTab({
             onPress={handleMoveRight}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={styles.catReorderBtnText}>›</Text>
+            <ChevronRight size={14} color="#FFFFFF" />
           </TouchableOpacity>
 
           <View style={styles.categoryTabContent}>
@@ -1194,7 +1214,7 @@ const CategoryTab = memo(function CategoryTab({
             onPress={handleMoveLeft}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={styles.catReorderBtnText}>‹</Text>
+            <ChevronLeft size={14} color="#FFFFFF" />
           </TouchableOpacity>
 
           {category.id !== DEFAULT_CATEGORY_ID && (
@@ -1203,7 +1223,7 @@ const CategoryTab = memo(function CategoryTab({
               onPress={handleDelete}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={styles.catDeleteBtnText}>✕</Text>
+              <X size={12} color={COLORS.error} strokeWidth={3} />
             </TouchableOpacity>
           )}
         </View>
@@ -1268,7 +1288,7 @@ const CategoryTabs = memo(function CategoryTabs({
   }, [categories, habits, todayKey, todayJy, todayJm, todayJd]);
 
   return (
-    <View style={{ marginBottom: 14 }}>
+    <View style={{ marginBottom: 16 }}>
       <ScrollView
         horizontal
         style={styles.categoryTabsScroll}
@@ -1296,20 +1316,20 @@ const CategoryTabs = memo(function CategoryTabs({
             activeOpacity={0.7}
             onPress={onAddCategory}
           >
-            <Text style={styles.categoryAddTabText}>+</Text>
+            <Plus size={18} color={COLORS.primary} strokeWidth={2.5} />
           </TouchableOpacity>
         )}
       </ScrollView>
 
       {categoryReorderMode && (
         <View style={styles.categoryReorderBanner}>
-          <Text style={styles.categoryReorderBannerText}>تغییر ترتیب بخش‌ها</Text>
+          <Text style={styles.categoryReorderBannerText}>تغییر چیدمان بخش‌ها</Text>
           <TouchableOpacity
             style={styles.categoryReorderDoneBtn}
             activeOpacity={0.8}
             onPress={onFinishCategoryReorder}
           >
-            <Text style={styles.categoryReorderDoneBtnText}>تایید ترتیب بخش‌ها</Text>
+            <Text style={styles.categoryReorderDoneBtnText}>تایید چیدمان</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1374,15 +1394,15 @@ const HomeScreen = memo(function HomeScreen({
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
       <View style={styles.homeHeaderRow}>
         <View style={styles.homeHeader}>
-          <Text style={styles.homeTitle}>🌱 ایجاد و مدیریت عادت‌ها</Text>
-          <Text style={styles.homeSubtitle}>عادت‌های خود را بسازید و روزانه پیگیری کنید</Text>
+          <Text style={styles.homeTitle}>عادت‌ها</Text>
+          <Text style={styles.homeSubtitle}>امروز، {toPersianDigits(todayJd)} {MONTHS_FA[todayJm - 1]}</Text>
         </View>
         <TouchableOpacity
           style={styles.settingsBtn}
           activeOpacity={0.7}
           onPress={onOpenSettings}
         >
-          <Text style={styles.settingsBtnText}>⚙️</Text>
+          <Settings size={20} color={COLORS.text} />
         </TouchableOpacity>
       </View>
 
@@ -1407,9 +1427,7 @@ const HomeScreen = memo(function HomeScreen({
           <View style={styles.todaySummaryBox}>
             <View style={styles.todaySummaryTopRow}>
               <View style={styles.todaySummaryDateChip}>
-                <Text style={styles.todaySummaryDateText}>
-                  امروز · {toPersianDigits(todayJd)} {MONTHS_FA[todayJm - 1]}
-                </Text>
+                <Text style={styles.todaySummaryDateText}>وضعیت روزانه</Text>
               </View>
               <Text style={styles.todaySummaryFraction}>
                 <Text style={{ color: COLORS.success }}>{toPersianDigits(successToday)}</Text>
@@ -1421,11 +1439,11 @@ const HomeScreen = memo(function HomeScreen({
               <View
                 style={[
                   styles.summaryProgressFill,
-                  { width: `${Math.min(100, (successToday / denominatorForToday) * 100)}%` },
+                  { width: `${Math.min(100, (successToday / (denominatorForToday || 1)) * 100)}%` },
                 ]}
               />
             </View>
-            <Text style={styles.todaySummaryLabel}>عادت موفق امروز</Text>
+            <Text style={styles.todaySummaryLabel}>عادت‌های موفق امروز</Text>
           </View>
         </View>
       )}
@@ -1440,11 +1458,11 @@ const HomeScreen = memo(function HomeScreen({
         {categoryHabits.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyStateIconWrap}>
-              <Text style={styles.emptyStateIcon}>🌱</Text>
+              <CalendarIcon size={36} color={COLORS.subtext} />
             </View>
-            <Text style={styles.emptyStateText}>هنوز عادتی در این بخش ایجاد نکرده‌اید</Text>
+            <Text style={styles.emptyStateText}>بدون عادت در این بخش</Text>
             <Text style={styles.emptyStateSubtext}>
-              با دکمه + پایین صفحه، اولین عادت این بخش را بسازید
+              با دکمه + در پایین صفحه، اولین عادت خود را بسازید
             </Text>
           </View>
         ) : (
@@ -1475,7 +1493,7 @@ const HomeScreen = memo(function HomeScreen({
           activeOpacity={0.8}
           onPress={onFinishReorder}
         >
-          <Text style={styles.finishReorderBtnText}>پایان ترتیب عادت‌ها</Text>
+          <Text style={styles.finishReorderBtnText}>تایید جابه‌جایی</Text>
         </TouchableOpacity>
       ) : (
         <TouchableOpacity
@@ -1483,7 +1501,7 @@ const HomeScreen = memo(function HomeScreen({
           activeOpacity={0.8}
           onPress={onOpenModal}
         >
-          <Text style={styles.fabText}>+</Text>
+          <Plus size={28} color="#FFFFFF" strokeWidth={2.5} />
         </TouchableOpacity>
       )}
     </View>
@@ -1491,7 +1509,7 @@ const HomeScreen = memo(function HomeScreen({
 });
 
 /* ============================================================
-   ROOT APP
+   ROOT APP (STATE & CONTROLLERS)
    ============================================================ */
 
 function RootApp() {
@@ -1938,7 +1956,7 @@ function RootApp() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <HomeScreen
         habits={habits}
         categories={categories}
@@ -1977,6 +1995,7 @@ function RootApp() {
         </View>
       )}
 
+      {/* iOS Style Bottom Sheet Modal for Habit Creation */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -1997,7 +2016,7 @@ function RootApp() {
               <Text style={styles.inputLabel}>عنوان</Text>
               <TextInput
                 style={styles.input}
-                placeholder="مثلاً: مطالعه روزانه"
+                placeholder="مثلاً: مطالعه کتاب"
                 placeholderTextColor={COLORS.dim}
                 value={titleInput}
                 onChangeText={setTitleInput}
@@ -2007,7 +2026,7 @@ function RootApp() {
               <Text style={styles.inputLabel}>توضیحات (اختیاری)</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
-                placeholder="توضیح کوتاهی درباره این عادت..."
+                placeholder="توضیح کوتاه یا یادداشت..."
                 placeholderTextColor={COLORS.dim}
                 value={descInput}
                 onChangeText={setDescInput}
@@ -2016,10 +2035,10 @@ function RootApp() {
                 numberOfLines={3}
               />
 
-              <Text style={styles.inputLabel}>هدف روزانه - تعداد دفعات (اختیاری)</Text>
+              <Text style={styles.inputLabel}>هدف روزانه (تعداد دفعات)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="مثلاً: 3"
+                placeholder="مثلاً: ۳"
                 placeholderTextColor={COLORS.dim}
                 value={goalInput}
                 onChangeText={handleGoalInputChange}
@@ -2050,6 +2069,7 @@ function RootApp() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* iOS Style Bottom Sheet Modal for Notification Settings */}
       <Modal
         visible={notifModalVisible}
         animationType="slide"
@@ -2065,7 +2085,7 @@ function RootApp() {
               <Switch
                 value={notifDraft.enabled}
                 onValueChange={handleNotifEnabledChange}
-                trackColor={{ false: COLORS.cardBorder, true: COLORS.primary }}
+                trackColor={{ false: COLORS.cardSurface, true: COLORS.primary }}
                 thumbColor="#FFFFFF"
               />
               <Text style={styles.notifSwitchLabel}>یادآور روزانه فعال باشد</Text>
@@ -2073,10 +2093,10 @@ function RootApp() {
 
             {notifDraft.enabled && (
               <View style={styles.notifTimeCard}>
-                <Text style={styles.notifTimeLabel}>یادآوری هر چند دقیقه یک‌بار ارسال شود</Text>
+                <Text style={styles.notifTimeLabel}>فاصله زمانی یادآوری (دقیقه)</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="مثلاً: 30"
+                  placeholder="۳۰"
                   placeholderTextColor={COLORS.dim}
                   value={String(notifDraft.intervalMinutes)}
                   onChangeText={setDraftInterval}
@@ -2084,15 +2104,14 @@ function RootApp() {
                   keyboardType="number-pad"
                 />
                 <Text style={styles.notifTimeHint}>
-                  به‌جای زمان مشخص، هر {toPersianDigits(notifDraft.intervalMinutes || '')} دقیقه یک‌بار
-                  (تا وقتی عادتی ناتمام مانده) یادآوری ارسال می‌شود.
+                  ارسال یادآور هر {toPersianDigits(notifDraft.intervalMinutes || '')} دقیقه یک‌بار تا زمان تکمیل کامل عادت‌ها
                 </Text>
                 <TouchableOpacity
                   style={styles.notifTestBtn}
                   activeOpacity={0.7}
                   onPress={handleTestNotification}
                 >
-                  <Text style={styles.notifTestBtnText}>ارسال نوتیفیکیشن تست (همین الان)</Text>
+                  <Text style={styles.notifTestBtnText}>ارسال نوتیفیکیشن تست</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -2117,6 +2136,7 @@ function RootApp() {
         </View>
       </Modal>
 
+      {/* iOS Style Bottom Sheet Modal for Category Creation */}
       <Modal
         visible={categoryModalVisible}
         animationType="slide"
@@ -2129,19 +2149,20 @@ function RootApp() {
         >
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { paddingBottom: insets.bottom + 20 }]}>
+              <View style={styles.modalHandle} />
               <Text style={styles.modalTitle}>بخش جدید</Text>
 
               <Text style={styles.inputLabel}>نام بخش</Text>
               <TextInput
                 style={styles.input}
-                placeholder="مثلاً: برنامه جمعه"
+                placeholder="مثلاً: آخر هفته"
                 placeholderTextColor={COLORS.subtext}
                 value={categoryNameInput}
                 onChangeText={setCategoryNameInput}
                 textAlign="right"
               />
 
-              <Text style={styles.inputLabel}>روزهای هفته (اختیاری - در صورت عدم انتخاب، همه روزها فعال است)</Text>
+              <Text style={styles.inputLabel}>روزهای فعال (عدم انتخاب = همه روزها)</Text>
               <View style={styles.daySelectorRow}>
                 {WEEKDAYS_FA.map((shortName, idx) => (
                   <DaySelectorButton
@@ -2187,13 +2208,13 @@ export default function App() {
 }
 
 /* ============================================================
-   STYLES
+   STYLING SYSTEM (APPLE HIG STANDARD)
    ============================================================ */
 
 const styles = StyleSheet.create({
   dayMenuOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: COLORS.overlay,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -2204,28 +2225,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 18,
+    borderRadius: 24,
+    padding: 20,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.5,
+    shadowRadius: 32,
+    elevation: 10,
   },
   dayMenuTitle: {
     color: COLORS.text,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 16,
+    letterSpacing: -0.2,
   },
   dayMenuOption: {
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
-    backgroundColor: COLORS.bg,
+    marginBottom: 8,
+    backgroundColor: COLORS.cardSurface,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
   },
@@ -2236,7 +2258,7 @@ const styles = StyleSheet.create({
   },
   dayMenuOptionSuccess: {
     backgroundColor: COLORS.successSoft,
-    borderColor: 'rgba(99,230,216,0.35)',
+    borderColor: 'rgba(48,209,88,0.3)',
   },
   dayMenuOptionSuccessText: {
     color: COLORS.success,
@@ -2244,8 +2266,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   dayMenuOptionFail: {
-    backgroundColor: 'rgba(255,69,58,0.12)',
-    borderColor: 'rgba(255,69,58,0.35)',
+    backgroundColor: COLORS.errorSoft,
+    borderColor: 'rgba(255,69,58,0.3)',
   },
   dayMenuOptionFailText: {
     color: COLORS.error,
@@ -2254,11 +2276,13 @@ const styles = StyleSheet.create({
   },
   dayMenuOptionCancel: {
     backgroundColor: 'transparent',
+    borderColor: 'transparent',
     marginBottom: 0,
+    marginTop: 4,
   },
   dayMenuOptionCancelText: {
     color: COLORS.subtext,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
   safe: {
@@ -2278,47 +2302,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  /* ---- Home header ---- */
+  /* ---- iOS Native Large Title Header ---- */
   homeHeaderRow: {
     flexDirection: 'row-reverse',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   homeHeader: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 18,
   },
   settingsBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 14,
-    marginLeft: 20,
-  },
-  settingsBtnText: {
-    fontSize: 18,
   },
   homeTitle: {
     color: COLORS.text,
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '800',
     textAlign: 'right',
-    letterSpacing: -0.4,
-    lineHeight: 34,
+    letterSpacing: -0.8,
+    lineHeight: 40,
   },
   homeSubtitle: {
     color: COLORS.subtext,
-    fontSize: 15,
-    lineHeight: 21,
-    marginTop: 6,
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 2,
     textAlign: 'right',
-    letterSpacing: 0.1,
+    letterSpacing: -0.1,
   },
   homeScrollContent: {
     paddingHorizontal: 16,
@@ -2329,7 +2348,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
 
-  /* ---- Category tabs ---- */
+  /* ---- Category Pills (iOS Segmented Style) ---- */
   categoryTabsScroll: {
     flexGrow: 0,
     flexShrink: 0,
@@ -2346,8 +2365,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
   },
   categoryTabActive: {
     backgroundColor: COLORS.primary,
@@ -2360,10 +2379,12 @@ const styles = StyleSheet.create({
   categoryTabText: {
     color: COLORS.subtext,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   categoryTabTextActive: {
     color: '#FFFFFF',
+    fontWeight: '700',
   },
   categoryTabDayHint: {
     color: COLORS.dim,
@@ -2387,19 +2408,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   categoryAddTab: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     paddingHorizontal: 0,
     paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  categoryAddTabText: {
-    color: COLORS.primary,
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: -2,
   },
   categoryTabReorderRow: {
     flexDirection: 'row-reverse',
@@ -2407,41 +2422,30 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   catReorderBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catReorderBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-    marginTop: -2,
-  },
   catDeleteBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: COLORS.errorSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 2,
-  },
-  catDeleteBtnText: {
-    color: COLORS.error,
-    fontSize: 12,
-    fontWeight: '800',
   },
   categoryReorderBanner: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.primarySoft,
-    borderColor: 'rgba(10,132,255,0.35)',
+    borderColor: 'rgba(10,132,255,0.3)',
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 18,
     marginHorizontal: 16,
     marginTop: 10,
     paddingHorizontal: 16,
@@ -2450,13 +2454,13 @@ const styles = StyleSheet.create({
   categoryReorderBannerText: {
     color: COLORS.primary,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   categoryReorderDoneBtn: {
     backgroundColor: COLORS.primary,
     borderRadius: 999,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 6,
   },
   categoryReorderDoneBtnText: {
     color: '#FFFFFF',
@@ -2464,25 +2468,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  /* ---- Today summary hero ---- */
+  /* ---- Apple Inset Today Summary Card ---- */
   todaySummaryRow: {
     flexDirection: 'row-reverse',
     paddingHorizontal: 16,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   todaySummaryBox: {
     flex: 1,
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 22,
     paddingHorizontal: 20,
     paddingVertical: 18,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    elevation: 4,
   },
   todaySummaryTopRow: {
     flexDirection: 'row-reverse',
@@ -2493,39 +2492,39 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.todaySoft,
     borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
   },
   todaySummaryDateText: {
     color: COLORS.today,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   todaySummaryFraction: {
-    fontSize: 34,
-    fontWeight: '900',
-    letterSpacing: 0.5,
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   summaryProgressTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.input,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: COLORS.cardSurface,
     marginTop: 14,
     overflow: 'hidden',
   },
   summaryProgressFill: {
-    height: 8,
-    borderRadius: 4,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: COLORS.success,
   },
   todaySummaryLabel: {
     color: COLORS.subtext,
     fontSize: 13,
     marginTop: 10,
-    fontWeight: '600',
+    fontWeight: '500',
     textAlign: 'right',
   },
 
-  /* ---- Empty state ---- */
+  /* ---- Empty State ---- */
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -2533,50 +2532,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   emptyStateIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 28,
+    width: 80,
+    height: 80,
+    borderRadius: 24,
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
-  },
-  emptyStateIcon: {
-    fontSize: 40,
+    marginBottom: 16,
   },
   emptyStateText: {
     color: COLORS.text,
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
   },
   emptyStateSubtext: {
     color: COLORS.subtext,
     fontSize: 14,
-    lineHeight: 22,
-    marginTop: 8,
+    lineHeight: 20,
+    marginTop: 6,
     textAlign: 'center',
   },
 
-  /* ---- Habit card ---- */
+  /* ---- Apple Grouped Habit Card ---- */
   habitCard: {
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 20,
-    marginBottom: 14,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 3,
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 12,
   },
   habitCardCompleted: {
     backgroundColor: COLORS.successDeep,
-    borderColor: 'rgba(99,230,216,0.45)',
+    borderColor: 'rgba(48,209,88,0.35)',
   },
   habitCardTop: {
     flexDirection: 'row-reverse',
@@ -2589,39 +2580,42 @@ const styles = StyleSheet.create({
   },
   habitTitle: {
     color: COLORS.text,
-    fontSize: 20,
-    fontWeight: '900',
+    fontSize: 19,
+    fontWeight: '700',
     textAlign: 'right',
     flexShrink: 1,
+    letterSpacing: -0.3,
   },
   completedBadge: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: COLORS.successSoft,
-    borderColor: 'rgba(99,230,216,0.35)',
+    borderColor: 'rgba(48,209,88,0.3)',
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginRight: 8,
   },
   completedBadgeText: {
     color: COLORS.success,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   goalProgressBadge: {
     backgroundColor: COLORS.todaySoft,
-    borderColor: 'rgba(255,159,10,0.45)',
+    borderColor: 'rgba(255,159,10,0.35)',
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginRight: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginRight: 8,
   },
   goalProgressBadgeText: {
     color: COLORS.today,
-    fontSize: 17,
-    fontWeight: '900',
-    letterSpacing: 0.3,
+    fontSize: 15,
+    fontWeight: '800',
   },
   goalProgressBadgeDivider: {
     color: COLORS.today,
@@ -2629,23 +2623,19 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   cardEditBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
-  },
-  cardEditBtnText: {
-    color: COLORS.subtext,
-    fontSize: 16,
+    marginRight: 8,
   },
   habitDescription: {
     color: COLORS.subtext,
-    fontSize: 14,
-    lineHeight: 22,
-    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 6,
     textAlign: 'right',
   },
   habitCounterRow: {
@@ -2657,8 +2647,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 999,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginLeft: 10,
+    paddingVertical: 7,
+    marginLeft: 8,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
@@ -2666,45 +2656,38 @@ const styles = StyleSheet.create({
     borderColor: COLORS.text,
   },
   habitCounterChipDisabled: {
-    opacity: 0.4,
+    opacity: 0.35,
   },
   habitCounterValue: {
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '800',
     marginLeft: 6,
-    letterSpacing: 0.3,
   },
   habitCounterLabel: {
     color: COLORS.subtext,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
 
-  /* ---- FAB ---- */
+  /* ---- Floating Action Button (iOS Glass Style) ---- */
   fab: {
     position: 'absolute',
     left: 20,
     bottom: 28,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.4,
     shadowRadius: 16,
-    elevation: 10,
-  },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 34,
-    fontWeight: '400',
-    marginTop: Platform.OS === 'ios' ? -2 : -3,
+    elevation: 8,
   },
 
-  /* ---- Modal ---- */
+  /* ---- Apple Bottom Sheet Modal ---- */
   modalOverlay: {
     flex: 1,
     backgroundColor: COLORS.overlay,
@@ -2712,38 +2695,33 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     backgroundColor: COLORS.card,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
     borderBottomWidth: 0,
     padding: 24,
     paddingBottom: 28,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 10,
   },
   modalHandle: {
     alignSelf: 'center',
-    width: 44,
+    width: 36,
     height: 5,
-    borderRadius: 3,
-    backgroundColor: COLORS.cardBorder,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     marginBottom: 18,
   },
   modalTitle: {
     color: COLORS.text,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     textAlign: 'right',
-    marginBottom: 20,
-    letterSpacing: 0.2,
+    marginBottom: 18,
+    letterSpacing: -0.3,
   },
   inputLabel: {
     color: COLORS.subtext,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     textAlign: 'right',
     marginBottom: 8,
@@ -2758,70 +2736,61 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 16,
     textAlign: 'right',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   inputMultiline: {
-    minHeight: 88,
+    minHeight: 80,
     textAlignVertical: 'top',
   },
   modalButtonsRow: {
     flexDirection: 'row-reverse',
-    marginTop: 6,
+    marginTop: 8,
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 15,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalButtonCancel: {
-    backgroundColor: 'transparent',
+    backgroundColor: COLORS.cardSurface,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    marginLeft: 12,
+    marginLeft: 10,
   },
   modalButtonCancelText: {
     color: COLORS.subtext,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   modalButtonCreate: {
     backgroundColor: COLORS.primary,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
   },
   modalButtonCreateText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
 
-  /* ---- Detail header ---- */
+  /* ---- Detail Screen Components ---- */
   detailHeader: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: 12,
     paddingBottom: 16,
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 12,
-  },
-  backBtnText: {
-    color: COLORS.text,
-    fontSize: 20,
   },
   detailHeaderTextWrap: {
     flex: 1,
@@ -2831,28 +2800,24 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     textAlign: 'right',
-    letterSpacing: 0.2,
+    letterSpacing: -0.4,
   },
   detailSubtitle: {
     color: COLORS.subtext,
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 13,
+    marginTop: 2,
     textAlign: 'right',
   },
   editBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: COLORS.primarySoft,
-    borderColor: 'rgba(10,132,255,0.35)',
+    borderColor: 'rgba(10,132,255,0.3)',
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-  },
-  editBtnText: {
-    color: COLORS.primary,
-    fontSize: 18,
   },
 
   scrollContent: {
@@ -2860,7 +2825,6 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
 
-  /* ---- Schedule chip row (detail screen) ---- */
   scheduleChipRow: {
     flexDirection: 'row-reverse',
     marginBottom: 12,
@@ -2868,7 +2832,7 @@ const styles = StyleSheet.create({
   },
   scheduleChip: {
     backgroundColor: COLORS.primarySoft,
-    borderColor: 'rgba(10,132,255,0.35)',
+    borderColor: 'rgba(10,132,255,0.3)',
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 14,
@@ -2876,11 +2840,11 @@ const styles = StyleSheet.create({
   },
   scheduleChipText: {
     color: COLORS.primary,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
 
-  /* ---- Stats ---- */
+  /* ---- Stats Inset Cards ---- */
   statsRow: {
     flexDirection: 'row-reverse',
     marginBottom: 16,
@@ -2890,44 +2854,44 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 20,
     paddingVertical: 16,
     paddingHorizontal: 6,
     alignItems: 'center',
     marginLeft: 8,
   },
   statIconDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   statIconDotInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   statValue: {
-    fontSize: 26,
-    fontWeight: '900',
-    letterSpacing: 0.3,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   statLabel: {
     color: COLORS.subtext,
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 6,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 4,
     textAlign: 'center',
   },
 
-  /* ---- Calendar ---- */
+  /* ---- Calendar Grid Card ---- */
   calendarCard: {
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 16,
     marginBottom: 16,
   },
@@ -2935,29 +2899,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   calendarNavBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: COLORS.input,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.cardSurface,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  calendarNavBtnText: {
-    color: COLORS.text,
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: -2,
-  },
   calendarMonthLabel: {
     color: COLORS.text,
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+    fontSize: 17,
+    fontWeight: '700',
   },
   weekdayRow: {
     flexDirection: 'row',
@@ -2969,16 +2926,16 @@ const styles = StyleSheet.create({
   weekdayCell: {
     width: `${100 / 7}%`,
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   weekdayText: {
     color: COLORS.dim,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
   },
   calendarGrid: {
     flexDirection: 'column',
-    marginTop: 4,
+    marginTop: 2,
   },
   calendarWeekRow: {
     flexDirection: 'row',
@@ -2988,11 +2945,11 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   dayCircle: {
-    width: '84%',
-    height: '84%',
+    width: '82%',
+    height: '82%',
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -3012,7 +2969,7 @@ const styles = StyleSheet.create({
   },
   dayNumber: {
     color: COLORS.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   dayNumberToday: {
@@ -3020,45 +2977,40 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   dayNumberMarked: {
-    fontSize: 11,
-  },
-  dayMark: {
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: -2,
+    fontSize: 10,
   },
 
-  /* ---- Action card ---- */
+  /* ---- Action Card ---- */
   actionCard: {
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 22,
+    padding: 18,
     marginBottom: 16,
   },
   actionQuestion: {
     color: COLORS.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     textAlign: 'right',
-    marginBottom: 16,
-    lineHeight: 26,
+    marginBottom: 14,
+    lineHeight: 24,
   },
   actionHintText: {
     color: COLORS.today,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     textAlign: 'right',
     marginBottom: 12,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   actionButtonsRow: {
     flexDirection: 'row-reverse',
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -3067,36 +3019,26 @@ const styles = StyleSheet.create({
   },
   actionButtonYes: {
     backgroundColor: COLORS.successSoft,
-    borderColor: 'rgba(99,230,216,0.35)',
+    borderColor: 'rgba(48,209,88,0.3)',
   },
   actionButtonYesActive: {
     backgroundColor: COLORS.success,
     borderColor: COLORS.success,
-    shadowColor: COLORS.success,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
   },
   actionButtonNo: {
     backgroundColor: COLORS.errorSoft,
-    borderColor: 'rgba(255,69,58,0.35)',
+    borderColor: 'rgba(255,69,58,0.3)',
   },
   actionButtonNoActive: {
     backgroundColor: COLORS.error,
     borderColor: COLORS.error,
-    shadowColor: COLORS.error,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
   },
   actionButtonDisabled: {
-    opacity: 0.4,
+    opacity: 0.35,
   },
   actionButtonText: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
   },
   actionButtonYesText: {
     color: COLORS.success,
@@ -3108,13 +3050,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  /* ---- Delete ---- */
+  /* ---- Delete Button ---- */
   deleteBtn: {
+    flexDirection: 'row-reverse',
     backgroundColor: COLORS.errorSoft,
-    borderColor: 'rgba(255,69,58,0.35)',
+    borderColor: 'rgba(255,69,58,0.3)',
     borderWidth: 1,
     borderRadius: 16,
-    paddingVertical: 16,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -3125,55 +3068,55 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  /* ---- Description card ---- */
+  /* ---- Description Card ---- */
   descriptionCard: {
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 22,
+    padding: 18,
     marginBottom: 16,
   },
   descriptionLabel: {
     color: COLORS.dim,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     textAlign: 'right',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   descriptionText: {
     color: COLORS.text,
-    fontSize: 15,
+    fontSize: 14,
     textAlign: 'right',
-    lineHeight: 24,
+    lineHeight: 22,
   },
 
-  /* ---- Goal / progress card ---- */
+  /* ---- Goal Card ---- */
   goalCard: {
     backgroundColor: COLORS.card,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 22,
+    padding: 18,
     marginBottom: 16,
   },
   goalHeaderRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   goalTitle: {
     color: COLORS.text,
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
     textAlign: 'right',
   },
   goalChip: {
     backgroundColor: COLORS.primarySoft,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   goalChipText: {
     color: COLORS.primary,
@@ -3181,15 +3124,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   goalProgressTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.input,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: COLORS.cardSurface,
     overflow: 'hidden',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   goalProgressFill: {
-    height: 8,
-    borderRadius: 4,
+    height: 7,
+    borderRadius: 3.5,
   },
   goalRow: {
     flexDirection: 'row-reverse',
@@ -3197,10 +3140,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   goalStepBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    backgroundColor: COLORS.input,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.cardSurface,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
     alignItems: 'center',
@@ -3208,48 +3151,47 @@ const styles = StyleSheet.create({
   },
   goalStepBtnPlus: {
     backgroundColor: COLORS.primarySoft,
-    borderColor: 'rgba(10,132,255,0.35)',
+    borderColor: 'rgba(10,132,255,0.3)',
   },
   goalStepBtnText: {
     color: COLORS.primary,
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '600',
     marginTop: -2,
   },
   goalCenter: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
   },
   goalCount: {
     color: COLORS.text,
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 0.3,
+    fontSize: 20,
+    fontWeight: '800',
   },
   goalCountDivider: {
     color: COLORS.dim,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   goalRemaining: {
     color: COLORS.subtext,
-    fontSize: 12,
-    marginTop: 5,
+    fontSize: 11,
+    marginTop: 3,
     textAlign: 'center',
   },
 
-  /* ---- Reorder mode ---- */
+  /* ---- Reorder Row ---- */
   reorderRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 14,
+    marginTop: 12,
   },
   reorderBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.input,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.cardSurface,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
     alignItems: 'center',
@@ -3258,11 +3200,6 @@ const styles = StyleSheet.create({
   reorderBtnDisabled: {
     opacity: 0.3,
   },
-  reorderBtnText: {
-    color: COLORS.primary,
-    fontSize: 18,
-    fontWeight: '700',
-  },
   reorderHint: {
     color: COLORS.subtext,
     fontSize: 12,
@@ -3270,34 +3207,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  /* ---- Finish reorder button ---- */
+  /* ---- Finish Reorder Button ---- */
   finishReorderBtn: {
     position: 'absolute',
     left: 20,
     right: 20,
-    height: 56,
-    borderRadius: 28,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.4,
     shadowRadius: 16,
-    elevation: 10,
+    elevation: 8,
   },
   finishReorderBtnText: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
   },
 
-  /* ---- Notification settings modal ---- */
+  /* ---- Notifications Modal ---- */
   notifSwitchRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   notifSwitchLabel: {
     color: COLORS.text,
@@ -3306,55 +3243,55 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   notifTimeCard: {
-    backgroundColor: COLORS.input,
+    backgroundColor: COLORS.cardSurface,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 18,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
   },
   notifTimeLabel: {
     color: COLORS.subtext,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     textAlign: 'right',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   notifTimeHint: {
     color: COLORS.subtext,
     fontSize: 12,
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 8,
     lineHeight: 18,
   },
   notifTestBtn: {
-    marginTop: 14,
+    marginTop: 12,
     backgroundColor: COLORS.primarySoft,
-    borderColor: 'rgba(10,132,255,0.35)',
+    borderColor: 'rgba(10,132,255,0.3)',
     borderWidth: 1,
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   notifTestBtnText: {
     color: COLORS.primary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
 
-  /* ---- Day selector for category creation ---- */
+  /* ---- Day Selector Pills ---- */
   daySelectorRow: {
     flexDirection: 'row-reverse',
     justifyContent: 'center',
-    marginBottom: 18,
-    gap: 8,
+    marginBottom: 16,
+    gap: 6,
   },
   daySelectorCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.input,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.cardSurface,
     borderColor: COLORS.cardBorder,
     borderWidth: 1,
     alignItems: 'center',
@@ -3366,7 +3303,7 @@ const styles = StyleSheet.create({
   },
   daySelectorText: {
     color: COLORS.subtext,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   daySelectorTextSelected: {
