@@ -15,10 +15,17 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.mmadmehdi.HabitTrackerApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "owner": "mmadmehdii",
+    "extra": {
+      "eas": {
+        "projectId": "e4018d8f-dc62-47de-bbd1-41bcc2b4b11c"
+      }
     }
   }
 }
