@@ -37,8 +37,6 @@ const DEFAULT_NOTIF_SETTINGS = { enabled: false, intervalMinutes: 30 };
 
 const CATEGORIES_KEY = '@habit_tracker_categories_v1';
 const DEFAULT_CATEGORY_ID = 'daily';
-// `days` = null یا آرایه خالی = فعال در همه روزها
-// `days` = آرایه غیرخالی از ایندکس روزهای هفته (0=شنبه … 6=جمعه) = فقط در آن روزها فعال
 const DEFAULT_CATEGORIES = [{ id: DEFAULT_CATEGORY_ID, name: 'روزانه', days: null }];
 
 Notifications.setNotificationHandler({
@@ -52,30 +50,24 @@ Notifications.setNotificationHandler({
 
 /* ---------- Premium midnight design system ---------- */
 const COLORS = {
-  // پس‌زمینه‌ها: سیاه عمیق اپل با سطوح روشنایی متمایز برای ایجاد عمق
   bg: '#000000',
   card: '#1C1C1E',
   cardBorder: 'rgba(255,255,255,0.09)',
   input: '#2C2C2E',
 
-  // رنگ اصلی: Indigo/Electric Blue سیستمی اپل
   primary: '#0A84FF',
   primarySoft: 'rgba(10,132,255,0.16)',
 
-  // موفقیت: Mint Green سیستمی اپل
   success: '#63E6D8',
   successSoft: 'rgba(99,230,216,0.14)',
   successDeep: '#0F3D38',
 
-  // خطا/ناتمام: Coral Red سیستمی اپل
   error: '#FF453A',
   errorSoft: 'rgba(255,69,58,0.14)',
 
-  // امروز: Amber سیستمی اپل
   today: '#FF9F0A',
   todaySoft: 'rgba(255,159,10,0.16)',
 
-  // تایپوگرافی: سلسله‌مراتب Label اپل
   text: '#FFFFFF',
   subtext: 'rgba(235,235,245,0.60)',
   dim: 'rgba(235,235,245,0.30)',
@@ -202,21 +194,18 @@ function dateKey(jy, jm, jd) {
   return `${jy}-${pad2(jm)}-${pad2(jd)}`;
 }
 
-// 0=شنبه … 6=جمعه
 function jalaliWeekdayIndex(jy, jm, jd) {
   const [gy, gm, gd] = jalaliToGregorian(jy, jm, jd);
   const jsDay = new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay();
   return (jsDay + 1) % 7;
 }
 
-// آیا این بخش در تاریخ شمسی داده شده فعال است؟
 function isCategoryActiveOn(category, jy, jm, jd) {
   if (!category) return true;
   if (!Array.isArray(category.days) || category.days.length === 0) return true;
   return category.days.includes(jalaliWeekdayIndex(jy, jm, jd));
 }
 
-// تعداد روزهای برنامه‌ریزی‌شده از تاریخ شروع تا امروز
 function scheduledDaysSince(category, startDate) {
   if (!startDate || Number.isNaN(startDate.getTime())) return 1;
   if (!category || !Array.isArray(category.days) || category.days.length === 0) {
@@ -239,7 +228,6 @@ function scheduledDaysSince(category, startDate) {
   return count;
 }
 
-// متن فارسی روزهای فعال یک بخش
 function formatScheduledDays(category) {
   if (!category || !Array.isArray(category.days) || category.days.length === 0) return 'همه روزها';
   if (category.days.length === 7) return 'همه روزها';
@@ -250,7 +238,6 @@ function formatScheduledDays(category) {
     .join('، ');
 }
 
-// تعداد شکست‌ها فقط در روزهای برنامه‌ریزی‌شده
 function countFailuresOnScheduledDays(history, category) {
   if (!history) return 0;
   let n = 0;
@@ -267,8 +254,6 @@ function countFailuresOnScheduledDays(history, category) {
   return n;
 }
 
-/* ثبت خودکار شکست برای روزهای سپری‌شده. شکست فقط در روزهایی که
-   بخش عادت برایشان برنامه‌ریزی شده ثبت می‌شود. */
 function backfillMissedDays(list, categories) {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -326,7 +311,6 @@ async function configureNotificationChannel() {
   });
 }
 
-// فقط عادت‌هایی که برای امروز برنامه‌ریزی شده‌اند و هنوز انجام نشده‌اند
 function getIncompleteHabitTitles(habits, categories, todayKey) {
   const parts = todayKey.split('-');
   const jy = parseInt(parts[0], 10);
@@ -403,9 +387,6 @@ async function sendTestHabitNotification(habits, categories) {
    REUSABLE UI PIECES
    ============================================================ */
 
-// AnimatedPressable: بازخورد لمسی به سبک اپل — بلافاصله با شروع لمس (pointer-down)
-// مقیاس عنصر کمی کوچک می‌شود و با یک فنر «بحرانی-میرا» (بدون پرش) به حالت اول برمی‌گردد.
-// این دقیقاً همان الگوی transform: scale(0.97) با فنر critically-damped است.
 const AnimatedPressable = memo(function AnimatedPressable({
   children,
   style,
@@ -476,7 +457,6 @@ const StatBox = memo(function StatBox({ value, numerator, denominator, label, co
   );
 });
 
-// چیپ نمایش روزهای برنامه‌ریزی یک بخش
 const ScheduleChip = memo(function ScheduleChip({ category }) {
   if (!category) return null;
   return (
@@ -548,8 +528,6 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
     return () => sub.remove();
   }, [onBack]);
 
-  // "امروز" همیشه محاسبه‌ی زنده می‌ماند (بدون useMemo با وابستگی خالی) تا اگر
-  // برنامه از نیمه‌شب رد شود، رفتار دقیقاً مثل قبل درست بماند.
   const todayJalali = getTodayJalali();
   const todayKey = dateKey(todayJalali[0], todayJalali[1], todayJalali[2]);
   const history = habit.history || {};
@@ -613,7 +591,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
 
   const handleDayLongPress = useCallback(
     (key, dayIsScheduled) => {
-      if (key > todayKey) return; // future day — nothing to edit yet
+      if (key > todayKey) return;
       setDayMenu({ visible: true, key, dayIsScheduled });
     },
     [todayKey]
@@ -1129,13 +1107,18 @@ const CategoryTab = memo(function CategoryTab({
   onSelectCategory,
   onDeleteCategory,
   shouldBlink,
+  categoryReorderMode,
+  onLongPressCategory,
+  onMoveCategory,
+  isFirst,
+  isLast,
 }) {
   const handlePress = useCallback(() => onSelectCategory(category.id), [onSelectCategory, category.id]);
-  const handleLongPress = useCallback(() => {
-    if (category.id !== DEFAULT_CATEGORY_ID) onDeleteCategory(category.id);
-  }, [onDeleteCategory, category.id]);
+  const handleLongPress = useCallback(() => onLongPressCategory(), [onLongPressCategory]);
+  const handleMoveRight = useCallback(() => onMoveCategory(category.id, -1), [onMoveCategory, category.id]);
+  const handleMoveLeft = useCallback(() => onMoveCategory(category.id, 1), [onMoveCategory, category.id]);
+  const handleDelete = useCallback(() => onDeleteCategory(category.id), [onDeleteCategory, category.id]);
 
-  // چشمک قرمز: وقتی امروز نوبت این بخش است ولی عادت‌هایش هنوز کامل انجام نشده‌اند
   const blinkAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -1172,9 +1155,9 @@ const CategoryTab = memo(function CategoryTab({
   return (
     <AnimatedPressable
       style={[styles.categoryTab, isActive && styles.categoryTabActive]}
-      onPress={handlePress}
-      onLongPress={handleLongPress}
-      delayLongPress={500}
+      onPress={categoryReorderMode ? undefined : handlePress}
+      onLongPress={categoryReorderMode ? undefined : handleLongPress}
+      delayLongPress={450}
     >
       {shouldBlink && (
         <Animated.View
@@ -1182,28 +1165,72 @@ const CategoryTab = memo(function CategoryTab({
           style={[styles.categoryTabBlinkOverlay, { opacity: blinkOverlayOpacity }]}
         />
       )}
-      <View style={styles.categoryTabContent}>
-        <Text
-          style={[
-            styles.categoryTabText,
-            isActive && styles.categoryTabTextActive,
-            shouldBlink && styles.categoryTabTextBlink,
-          ]}
-        >
-          {category.name}
-        </Text>
-        {category.days && category.days.length > 0 && category.days.length < 7 && (
+      {categoryReorderMode ? (
+        <View style={styles.categoryTabReorderRow}>
+          <TouchableOpacity
+            style={[styles.catReorderBtn, isFirst && styles.reorderBtnDisabled]}
+            disabled={isFirst}
+            onPress={handleMoveRight}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.catReorderBtnText}>›</Text>
+          </TouchableOpacity>
+
+          <View style={styles.categoryTabContent}>
+            <Text
+              style={[
+                styles.categoryTabText,
+                isActive && styles.categoryTabTextActive,
+                shouldBlink && styles.categoryTabTextBlink,
+              ]}
+            >
+              {category.name}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.catReorderBtn, isLast && styles.reorderBtnDisabled]}
+            disabled={isLast}
+            onPress={handleMoveLeft}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.catReorderBtnText}>‹</Text>
+          </TouchableOpacity>
+
+          {category.id !== DEFAULT_CATEGORY_ID && (
+            <TouchableOpacity
+              style={styles.catDeleteBtn}
+              onPress={handleDelete}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.catDeleteBtnText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <View style={styles.categoryTabContent}>
           <Text
             style={[
-              styles.categoryTabDayHint,
-              isActive && styles.categoryTabDayHintActive,
+              styles.categoryTabText,
+              isActive && styles.categoryTabTextActive,
               shouldBlink && styles.categoryTabTextBlink,
             ]}
           >
-            {category.days.map((d) => WEEKDAYS_FA[d]).join(' ')}
+            {category.name}
           </Text>
-        )}
-      </View>
+          {category.days && category.days.length > 0 && category.days.length < 7 && (
+            <Text
+              style={[
+                styles.categoryTabDayHint,
+                isActive && styles.categoryTabDayHintActive,
+                shouldBlink && styles.categoryTabTextBlink,
+              ]}
+            >
+              {category.days.map((d) => WEEKDAYS_FA[d]).join(' ')}
+            </Text>
+          )}
+        </View>
+      )}
     </AnimatedPressable>
   );
 });
@@ -1216,10 +1243,13 @@ const CategoryTabs = memo(function CategoryTabs({
   onDeleteCategory,
   habits,
   todayKey,
+  categoryReorderMode,
+  onLongPressCategory,
+  onMoveCategory,
+  onFinishCategoryReorder,
 }) {
   const [todayJy, todayJm, todayJd] = getTodayJalali();
 
-  // بخش‌هایی که امروز نوبتشان است و هنوز همه‌ی عادت‌های آن بخش انجام نشده‌اند
   const blinkingCategoryIds = useMemo(() => {
     const ids = new Set();
     categories.forEach((cat) => {
@@ -1238,30 +1268,52 @@ const CategoryTabs = memo(function CategoryTabs({
   }, [categories, habits, todayKey, todayJy, todayJm, todayJd]);
 
   return (
-    <ScrollView
-      horizontal
-      style={styles.categoryTabsScroll}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.categoryTabsRow}
-    >
-      {categories.map((cat) => (
-        <CategoryTab
-          key={cat.id}
-          category={cat}
-          isActive={cat.id === activeCategoryId}
-          onSelectCategory={onSelectCategory}
-          onDeleteCategory={onDeleteCategory}
-          shouldBlink={blinkingCategoryIds.has(cat.id)}
-        />
-      ))}
-      <TouchableOpacity
-        style={[styles.categoryTab, styles.categoryAddTab]}
-        activeOpacity={0.7}
-        onPress={onAddCategory}
+    <View style={{ marginBottom: 14 }}>
+      <ScrollView
+        horizontal
+        style={styles.categoryTabsScroll}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryTabsRow}
       >
-        <Text style={styles.categoryAddTabText}>+</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {categories.map((cat, idx) => (
+          <CategoryTab
+            key={cat.id}
+            category={cat}
+            isActive={cat.id === activeCategoryId}
+            onSelectCategory={onSelectCategory}
+            onDeleteCategory={onDeleteCategory}
+            shouldBlink={blinkingCategoryIds.has(cat.id)}
+            categoryReorderMode={categoryReorderMode}
+            onLongPressCategory={onLongPressCategory}
+            onMoveCategory={onMoveCategory}
+            isFirst={idx === 0}
+            isLast={idx === categories.length - 1}
+          />
+        ))}
+        {!categoryReorderMode && (
+          <TouchableOpacity
+            style={[styles.categoryTab, styles.categoryAddTab]}
+            activeOpacity={0.7}
+            onPress={onAddCategory}
+          >
+            <Text style={styles.categoryAddTabText}>+</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+
+      {categoryReorderMode && (
+        <View style={styles.categoryReorderBanner}>
+          <Text style={styles.categoryReorderBannerText}>تغییر ترتیب بخش‌ها</Text>
+          <TouchableOpacity
+            style={styles.categoryReorderDoneBtn}
+            activeOpacity={0.8}
+            onPress={onFinishCategoryReorder}
+          >
+            <Text style={styles.categoryReorderDoneBtnText}>تایید ترتیب بخش‌ها</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 });
 
@@ -1275,6 +1327,10 @@ const HomeScreen = memo(function HomeScreen({
   onEnterReorder,
   onFinishReorder,
   onMoveHabit,
+  categoryReorderMode,
+  onEnterCategoryReorder,
+  onFinishCategoryReorder,
+  onMoveCategory,
   onOpenSettings,
   activeCategoryId,
   onSelectCategory,
@@ -1292,7 +1348,6 @@ const HomeScreen = memo(function HomeScreen({
     [habits, activeCategoryId]
   );
 
-  // تعداد موفقیت‌های امروز، فقط از عادت‌هایی که امروز برنامه‌ریزی شده‌اند
   const { successToday, denominatorForToday } = useMemo(() => {
     const success = categoryHabits.filter((h) => {
       const history = h.history || {};
@@ -1340,6 +1395,10 @@ const HomeScreen = memo(function HomeScreen({
           onDeleteCategory={onDeleteCategory}
           habits={habits}
           todayKey={todayKey}
+          categoryReorderMode={categoryReorderMode}
+          onLongPressCategory={onEnterCategoryReorder}
+          onMoveCategory={onMoveCategory}
+          onFinishCategoryReorder={onFinishCategoryReorder}
         />
       )}
 
@@ -1416,7 +1475,7 @@ const HomeScreen = memo(function HomeScreen({
           activeOpacity={0.8}
           onPress={onFinishReorder}
         >
-          <Text style={styles.finishReorderBtnText}>پایان ترتیب</Text>
+          <Text style={styles.finishReorderBtnText}>پایان ترتیب عادت‌ها</Text>
         </TouchableOpacity>
       ) : (
         <TouchableOpacity
@@ -1447,6 +1506,7 @@ function RootApp() {
   const [descInput, setDescInput] = useState('');
   const [goalInput, setGoalInput] = useState('');
   const [reorderMode, setReorderMode] = useState(false);
+  const [categoryReorderMode, setCategoryReorderMode] = useState(false);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [activeCategoryId, setActiveCategoryId] = useState(DEFAULT_CATEGORY_ID);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
@@ -1457,7 +1517,6 @@ function RootApp() {
   const [notifModalVisible, setNotifModalVisible] = useState(false);
   const [notifDraft, setNotifDraft] = useState(DEFAULT_NOTIF_SETTINGS);
 
-  // ---------- بارگذاری داده‌ها از حافظه ----------
   useEffect(() => {
     (async () => {
       try {
@@ -1515,7 +1574,6 @@ function RootApp() {
     })();
   }, []);
 
-  // ---------- بازپر کردن روزهای از دست رفته هنگام بازگشت به برنامه ----------
   useEffect(() => {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (nextState !== 'active') return;
@@ -1533,13 +1591,11 @@ function RootApp() {
     return () => sub.remove();
   }, [categories]);
 
-  // ---------- زمان‌بندی یادآور ----------
   useEffect(() => {
     if (!loaded || !notifLoaded) return;
     scheduleHabitReminder(habits, categories, notifSettings);
   }, [habits, categories, notifSettings, loaded, notifLoaded]);
 
-  // ---------- ذخیره‌سازی ----------
   const persist = useCallback(async (next) => {
     setHabits(next);
     try {
@@ -1562,7 +1618,6 @@ function RootApp() {
     }
   }, []);
 
-  // ---------- مودال بخش ----------
   const openAddCategoryModal = useCallback(() => {
     setCategoryNameInput('');
     setCategoryDaySelections([]);
@@ -1633,7 +1688,23 @@ function RootApp() {
     [categories, habits, activeCategoryId, persist, persistCategories]
   );
 
-  // ---------- تنظیمات نوتیفیکیشن ----------
+  const moveCategory = useCallback(
+    (catId, direction) => {
+      const idx = categories.findIndex((c) => c.id === catId);
+      if (idx < 0) return;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= categories.length) return;
+      const next = [...categories];
+      const [item] = next.splice(idx, 1);
+      next.splice(newIdx, 0, item);
+      persistCategories(next, activeCategoryId);
+    },
+    [categories, activeCategoryId, persistCategories]
+  );
+
+  const enterCategoryReorderMode = useCallback(() => setCategoryReorderMode(true), []);
+  const finishCategoryReorderMode = useCallback(() => setCategoryReorderMode(false), []);
+
   const openNotifSettings = useCallback(() => {
     setNotifDraft(notifSettings);
     setNotifModalVisible(true);
@@ -1689,7 +1760,6 @@ function RootApp() {
     }
   }, [habits, categories]);
 
-  // ---------- عملیات عادت ----------
   const openCreateModal = useCallback(() => {
     setEditingHabitId(null);
     setTitleInput('');
@@ -1843,11 +1913,6 @@ function RootApp() {
     [bumpProgress]
   );
 
-  // نکته حیاتی (قانون هوک‌ها): تمام هوک‌ها (useState/useEffect/useMemo/useCallback)
-  // باید همیشه، در هر رندر، به یک ترتیب و بدون شرط فراخوانی شوند. به همین دلیل
-  // هوک‌های زیر باید حتماً قبل از هر return شرطی (مثل حالت !loaded) تعریف شوند؛
-  // اگر بعد از یک return شرطی قرار بگیرند، در رندرهای مختلف تعداد هوک‌های
-  // فراخوانی‌شده فرق می‌کند و برنامه بلافاصله کرش می‌کند.
   const handleGoalInputChange = useCallback((t) => setGoalInput(t.replace(/[^0-9]/g, '')), []);
 
   const handleNotifEnabledChange = useCallback((v) => {
@@ -1863,7 +1928,6 @@ function RootApp() {
     if (selectedHabit) openEditModal(selectedHabit);
   }, [selectedHabit, openEditModal]);
 
-  // ---------- رندر ----------
   if (!loaded) {
     return (
       <View style={[styles.safe, styles.loadingWrap, { paddingTop: insets.top }]}>
@@ -1885,6 +1949,10 @@ function RootApp() {
         onEnterReorder={enterReorderMode}
         onFinishReorder={finishReorderMode}
         onMoveHabit={moveHabit}
+        categoryReorderMode={categoryReorderMode}
+        onEnterCategoryReorder={enterCategoryReorderMode}
+        onFinishCategoryReorder={finishCategoryReorderMode}
+        onMoveCategory={moveCategory}
         onOpenSettings={openNotifSettings}
         onIncrementGoal={incrementGoal}
         activeCategoryId={activeCategoryId}
@@ -2049,7 +2117,6 @@ function RootApp() {
         </View>
       </Modal>
 
-      {/* مودال ساخت بخش جدید با انتخاب روزهای هفته */}
       <Modal
         visible={categoryModalVisible}
         animationType="slide"
@@ -2271,7 +2338,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingBottom: 4,
     gap: 8,
   },
   categoryTab: {
@@ -2333,6 +2400,68 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     marginTop: -2,
+  },
+  categoryTabReorderRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+  },
+  catReorderBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catReorderBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: -2,
+  },
+  catDeleteBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.errorSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
+  },
+  catDeleteBtnText: {
+    color: COLORS.error,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  categoryReorderBanner: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.primarySoft,
+    borderColor: 'rgba(10,132,255,0.35)',
+    borderWidth: 1,
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginTop: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  categoryReorderBannerText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  categoryReorderDoneBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  categoryReorderDoneBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 
   /* ---- Today summary hero ---- */
@@ -3244,4 +3373,3 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
-//gab
