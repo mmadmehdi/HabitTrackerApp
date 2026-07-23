@@ -49,6 +49,7 @@ import {
 const STORAGE_KEY = '@habit_tracker_data_v2';
 const NOTIF_SETTINGS_KEY = '@habit_tracker_notif_settings_v1';
 const NOTIF_CHANNEL_ID = 'habit_urgent_channel';
+const TIMER_CHANNEL_ID = 'habit_timer_channel';
 const NOTIF_BATCH_SIZE = 200;
 
 const DEFAULT_NOTIF_SETTINGS = { enabled: false, intervalMinutes: 30 };
@@ -116,6 +117,16 @@ function toPersianDigits(input) {
   const str = String(input);
   const map = { '0': '۰', '1': '۱', '2': '۲', '3': '۳', '4': '۴', '5': '۵', '6': '۶', '7': '۷', '8': '۸', '9': '۹' };
   return str.replace(/[0-9]/g, (d) => map[d]);
+}
+
+function formatTimerEnglish(totalSecs) {
+  if (totalSecs == null || isNaN(totalSecs)) return '0s';
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
+  if (m > 0) {
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+  return `${totalSecs}s`;
 }
 
 function gregorianToJalali(gy, gm, gd) {
@@ -326,6 +337,19 @@ async function configureNotificationChannel() {
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     bypassDnd: true,
   });
+
+  await Notifications.setNotificationChannelAsync(TIMER_CHANNEL_ID, {
+    name: 'تایمر معکوس عادت‌ها',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#FF2D55',
+    enableVibrate: true,
+    enableLights: true,
+    showBadge: true,
+    sound: 'default',
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    bypassDnd: true,
+  });
 }
 
 function getIncompleteHabitTitles(habits, categories, todayKey) {
@@ -528,7 +552,18 @@ const DayCell = memo(function DayCell({ day, dayKey, isToday, status, dayIsSched
   );
 });
 
-const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, onBack, onDelete, onSetStatus, onClearStatus, onBumpProgress, onEdit }) {
+const HabitDetailScreen = memo(function HabitDetailScreen({
+  habit,
+  categories,
+  onBack,
+  onDelete,
+  onSetStatus,
+  onClearStatus,
+  onBumpProgress,
+  onEdit,
+  activeTimers,
+  onToggleTimer,
+}) {
   const insets = useSafeAreaInsets();
   const [view, setView] = useState(() => {
     const [jy, jm] = getTodayJalali();
@@ -655,6 +690,11 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
   const todayProgress = (habit.progress && habit.progress[todayKey]) || 0;
   const remaining = habit.goal > 0 ? Math.max(0, habit.goal - todayProgress) : 0;
 
+  const timerInfo = activeTimers ? activeTimers[habit.id] : null;
+  const remainingSecs = timerInfo
+    ? Math.max(0, Math.ceil((timerInfo.endTime - Date.now()) / 1000))
+    : null;
+
   const successLabel = hasDayRestriction ? 'موفقیت در روزهای فعال' : 'کل موفقیت‌ها';
   const failLabel = hasDayRestriction ? 'شکست در روزهای فعال' : 'کل شکست‌ها';
   const createdLabel = hasDayRestriction ? 'روزهای برنامه‌ریزی' : 'روزهای سپری شده';
@@ -667,9 +707,23 @@ const HabitDetailScreen = memo(function HabitDetailScreen({ habit, categories, o
           <ArrowRight size={20} color={COLORS.text} />
         </TouchableOpacity>
         <View style={styles.detailHeaderTextWrap}>
-          <Text style={styles.detailTitle} numberOfLines={1}>
-            {habit.title}
-          </Text>
+          <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+            <Text style={styles.detailTitle} numberOfLines={1}>
+              {habit.title}
+            </Text>
+            {!!habit.timerSeconds && habit.timerSeconds > 0 && (
+              <TouchableOpacity
+                style={[styles.timerBadge, timerInfo && styles.timerBadgeActive]}
+                activeOpacity={0.7}
+                onPress={() => onToggleTimer(habit)}
+              >
+                <Clock size={13} color={timerInfo ? '#FFFFFF' : COLORS.primary} style={{ marginLeft: 4 }} />
+                <Text style={[styles.timerBadgeText, timerInfo && styles.timerBadgeTextActive]}>
+                  {timerInfo ? formatTimerEnglish(remainingSecs) : formatTimerEnglish(habit.timerSeconds)}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={styles.detailSubtitle}>
             {toPersianDigits(todayJalali[2])} {MONTHS_FA[todayJalali[1] - 1]} {toPersianDigits(todayJalali[0])}
           </Text>
@@ -962,6 +1016,8 @@ const HabitCard = memo(function HabitCard({
   todayKey,
   onIncrementGoal,
   onSetStatus,
+  activeTimers,
+  onToggleTimer,
 }) {
   const history = habit.history || {};
   const category = useMemo(
@@ -983,6 +1039,11 @@ const HabitCard = memo(function HabitCard({
     return isCategoryActiveOn(category, todayJy, todayJm, todayJd);
   }, [category]);
   const todayStatus = history[todayKey];
+
+  const timerInfo = activeTimers ? activeTimers[habit.id] : null;
+  const remainingSecs = timerInfo
+    ? Math.max(0, Math.ceil((timerInfo.endTime - Date.now()) / 1000))
+    : null;
 
   const handlePress = useCallback(() => onOpenHabit(habit.id), [onOpenHabit, habit.id]);
   const handleEdit = useCallback(() => onEditHabit(habit), [onEditHabit, habit]);
@@ -1014,6 +1075,21 @@ const HabitCard = memo(function HabitCard({
           <Text style={styles.habitTitle} numberOfLines={1}>
             {habit.title}
           </Text>
+
+          {!!habit.timerSeconds && habit.timerSeconds > 0 && !reorderMode && (
+            <TouchableOpacity
+              style={[styles.timerBadge, timerInfo && styles.timerBadgeActive]}
+              activeOpacity={0.7}
+              onPress={() => onToggleTimer(habit)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Clock size={13} color={timerInfo ? '#FFFFFF' : COLORS.primary} style={{ marginLeft: 4 }} />
+              <Text style={[styles.timerBadgeText, timerInfo && styles.timerBadgeTextActive]}>
+                {timerInfo ? formatTimerEnglish(remainingSecs) : formatTimerEnglish(habit.timerSeconds)}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {hasGoal && !reorderMode && (
             <TouchableOpacity
               style={styles.goalProgressBadge}
@@ -1358,6 +1434,8 @@ const HomeScreen = memo(function HomeScreen({
   onDeleteCategory,
   onIncrementGoal,
   onSetStatus,
+  activeTimers,
+  onToggleTimer,
 }) {
   const insets = useSafeAreaInsets();
   const [todayJy, todayJm, todayJd] = getTodayJalali();
@@ -1482,6 +1560,8 @@ const HomeScreen = memo(function HomeScreen({
               todayKey={todayKey}
               onIncrementGoal={onIncrementGoal}
               onSetStatus={onSetStatus}
+              activeTimers={activeTimers}
+              onToggleTimer={onToggleTimer}
             />
           ))
         )}
@@ -1523,6 +1603,7 @@ function RootApp() {
   const [titleInput, setTitleInput] = useState('');
   const [descInput, setDescInput] = useState('');
   const [goalInput, setGoalInput] = useState('');
+  const [timerInput, setTimerInput] = useState('');
   const [reorderMode, setReorderMode] = useState(false);
   const [categoryReorderMode, setCategoryReorderMode] = useState(false);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
@@ -1534,6 +1615,72 @@ function RootApp() {
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifModalVisible, setNotifModalVisible] = useState(false);
   const [notifDraft, setNotifDraft] = useState(DEFAULT_NOTIF_SETTINGS);
+
+  const [activeTimers, setActiveTimers] = useState({});
+
+  useEffect(() => {
+    const timerKeys = Object.keys(activeTimers);
+    if (timerKeys.length === 0) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setActiveTimers((prev) => {
+        const next = { ...prev };
+        let changed = false;
+        Object.keys(next).forEach((id) => {
+          if (now >= next[id].endTime) {
+            delete next[id];
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeTimers]);
+
+  const toggleTimer = useCallback(async (habit) => {
+    if (!habit.timerSeconds || habit.timerSeconds <= 0) return;
+
+    if (activeTimers[habit.id]) {
+      const timerInfo = activeTimers[habit.id];
+      if (timerInfo && timerInfo.notifId) {
+        await Notifications.cancelScheduledNotificationAsync(timerInfo.notifId).catch(() => {});
+      }
+      setActiveTimers((prev) => {
+        const next = { ...prev };
+        delete next[habit.id];
+        return next;
+      });
+    } else {
+      const seconds = parseInt(habit.timerSeconds, 10);
+      if (isNaN(seconds) || seconds <= 0) return;
+
+      let notifId = null;
+      try {
+        await Notifications.requestPermissionsAsync();
+        notifId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '⏱️ پایان تایمر عادت',
+            body: `تایمر ${habit.title} تموم شد، برو انجامش بده`,
+            sound: true,
+            priority: Notifications.AndroidNotificationPriority.MAX,
+            android: { channelId: TIMER_CHANNEL_ID },
+          },
+          trigger: { type: 'timeInterval', seconds: seconds, repeats: false },
+        });
+      } catch (e) {
+        console.warn('Failed to schedule timer notification', e);
+      }
+
+      const endTime = Date.now() + seconds * 1000;
+      setActiveTimers((prev) => ({
+        ...prev,
+        [habit.id]: { endTime, notifId },
+      }));
+    }
+  }, [activeTimers]);
 
   useEffect(() => {
     (async () => {
@@ -1783,6 +1930,7 @@ function RootApp() {
     setTitleInput('');
     setDescInput('');
     setGoalInput('');
+    setTimerInput('');
     setModalVisible(true);
   }, []);
 
@@ -1791,6 +1939,7 @@ function RootApp() {
     setTitleInput(habit.title);
     setDescInput(habit.description || '');
     setGoalInput(habit.goal ? String(habit.goal) : '');
+    setTimerInput(habit.timerSeconds ? String(habit.timerSeconds) : '');
     setModalVisible(true);
   }, []);
 
@@ -1807,10 +1956,13 @@ function RootApp() {
     const parsedGoal = parseInt(goalInput, 10);
     const goal = Number.isFinite(parsedGoal) && parsedGoal > 0 ? parsedGoal : 0;
 
+    const parsedTimer = parseInt(timerInput, 10);
+    const timerSeconds = Number.isFinite(parsedTimer) && parsedTimer > 0 ? parsedTimer : 0;
+
     if (editingHabitId) {
       const next = habits.map((h) =>
         h.id === editingHabitId
-          ? { ...h, title: trimmedTitle, description: descInput.trim(), goal }
+          ? { ...h, title: trimmedTitle, description: descInput.trim(), goal, timerSeconds }
           : h
       );
       persist(next);
@@ -1820,6 +1972,7 @@ function RootApp() {
         title: trimmedTitle,
         description: descInput.trim(),
         goal,
+        timerSeconds,
         categoryId: activeCategoryId,
         createdAt: new Date().toISOString(),
         history: {},
@@ -1828,7 +1981,7 @@ function RootApp() {
       persist([newHabit, ...habits]);
     }
     setModalVisible(false);
-  }, [titleInput, descInput, goalInput, editingHabitId, habits, activeCategoryId, persist]);
+  }, [titleInput, descInput, goalInput, timerInput, editingHabitId, habits, activeCategoryId, persist]);
 
   const openHabit = useCallback((id) => {
     setSelectedId(id);
@@ -1932,6 +2085,7 @@ function RootApp() {
   );
 
   const handleGoalInputChange = useCallback((t) => setGoalInput(t.replace(/[^0-9]/g, '')), []);
+  const handleTimerInputChange = useCallback((t) => setTimerInput(t.replace(/[^0-9]/g, '')), []);
 
   const handleNotifEnabledChange = useCallback((v) => {
     setNotifDraft((prev) => ({ ...prev, enabled: v }));
@@ -1978,6 +2132,8 @@ function RootApp() {
         onAddCategory={openAddCategoryModal}
         onDeleteCategory={deleteCategory}
         onSetStatus={setStatus}
+        activeTimers={activeTimers}
+        onToggleTimer={toggleTimer}
       />
 
       {screen === 'detail' && selectedHabit && (
@@ -1991,6 +2147,8 @@ function RootApp() {
             onClearStatus={clearStatus}
             onBumpProgress={bumpProgress}
             onEdit={handleEditSelected}
+            activeTimers={activeTimers}
+            onToggleTimer={toggleTimer}
           />
         </View>
       )}
@@ -2033,6 +2191,17 @@ function RootApp() {
                 textAlign="right"
                 multiline
                 numberOfLines={3}
+              />
+
+              <Text style={styles.inputLabel}>تایمر معکوس (ثانیه - اختیاری)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="مثلاً: ۱۲۰"
+                placeholderTextColor={COLORS.dim}
+                value={timerInput}
+                onChangeText={handleTimerInputChange}
+                textAlign="right"
+                keyboardType="number-pad"
               />
 
               <Text style={styles.inputLabel}>هدف روزانه (تعداد دفعات)</Text>
@@ -2212,6 +2381,31 @@ export default function App() {
    ============================================================ */
 
 const styles = StyleSheet.create({
+  timerBadge: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: COLORS.primarySoft,
+    borderColor: 'rgba(10,132,255,0.35)',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginRight: 8,
+  },
+  timerBadgeActive: {
+    backgroundColor: COLORS.error,
+    borderColor: COLORS.error,
+  },
+  timerBadgeText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  timerBadgeTextActive: {
+    color: '#FFFFFF',
+  },
+
   dayMenuOverlay: {
     flex: 1,
     backgroundColor: COLORS.overlay,
