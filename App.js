@@ -563,6 +563,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
   onEdit,
   activeTimers,
   onToggleTimer,
+  nowTick,
 }) {
   const insets = useSafeAreaInsets();
   const [view, setView] = useState(() => {
@@ -692,7 +693,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
 
   const timerInfo = activeTimers ? activeTimers[habit.id] : null;
   const remainingSecs = timerInfo
-    ? Math.max(0, Math.ceil((timerInfo.endTime - Date.now()) / 1000))
+    ? Math.max(0, Math.ceil((timerInfo.endTime - nowTick) / 1000))
     : null;
 
   const successLabel = hasDayRestriction ? 'موفقیت در روزهای فعال' : 'کل موفقیت‌ها';
@@ -1018,6 +1019,7 @@ const HabitCard = memo(function HabitCard({
   onSetStatus,
   activeTimers,
   onToggleTimer,
+  nowTick,
 }) {
   const history = habit.history || {};
   const category = useMemo(
@@ -1042,7 +1044,7 @@ const HabitCard = memo(function HabitCard({
 
   const timerInfo = activeTimers ? activeTimers[habit.id] : null;
   const remainingSecs = timerInfo
-    ? Math.max(0, Math.ceil((timerInfo.endTime - Date.now()) / 1000))
+    ? Math.max(0, Math.ceil((timerInfo.endTime - nowTick) / 1000))
     : null;
 
   const handlePress = useCallback(() => onOpenHabit(habit.id), [onOpenHabit, habit.id]);
@@ -1436,6 +1438,7 @@ const HomeScreen = memo(function HomeScreen({
   onSetStatus,
   activeTimers,
   onToggleTimer,
+  nowTick,
 }) {
   const insets = useSafeAreaInsets();
   const [todayJy, todayJm, todayJd] = getTodayJalali();
@@ -1562,6 +1565,7 @@ const HomeScreen = memo(function HomeScreen({
               onSetStatus={onSetStatus}
               activeTimers={activeTimers}
               onToggleTimer={onToggleTimer}
+              nowTick={nowTick}
             />
           ))
         )}
@@ -1617,6 +1621,7 @@ function RootApp() {
   const [notifDraft, setNotifDraft] = useState(DEFAULT_NOTIF_SETTINGS);
 
   const [activeTimers, setActiveTimers] = useState({});
+  const [nowTick, setNowTick] = useState(Date.now());
 
   useEffect(() => {
     const timerKeys = Object.keys(activeTimers);
@@ -1624,16 +1629,18 @@ function RootApp() {
 
     const interval = setInterval(() => {
       const now = Date.now();
+      setNowTick(now);
+
       setActiveTimers((prev) => {
         const next = { ...prev };
-        let changed = false;
+        let hasExpired = false;
         Object.keys(next).forEach((id) => {
           if (now >= next[id].endTime) {
             delete next[id];
-            changed = true;
+            hasExpired = true;
           }
         });
-        return changed ? next : prev;
+        return hasExpired ? next : prev;
       });
     }, 1000);
 
@@ -1675,6 +1682,7 @@ function RootApp() {
       }
 
       const endTime = Date.now() + seconds * 1000;
+      setNowTick(Date.now());
       setActiveTimers((prev) => ({
         ...prev,
         [habit.id]: { endTime, notifId },
@@ -2134,6 +2142,7 @@ function RootApp() {
         onSetStatus={setStatus}
         activeTimers={activeTimers}
         onToggleTimer={toggleTimer}
+        nowTick={nowTick}
       />
 
       {screen === 'detail' && selectedHabit && (
@@ -2149,6 +2158,7 @@ function RootApp() {
             onEdit={handleEditSelected}
             activeTimers={activeTimers}
             onToggleTimer={toggleTimer}
+            nowTick={nowTick}
           />
         </View>
       )}
