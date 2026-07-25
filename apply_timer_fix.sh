@@ -1,3 +1,14 @@
+#!/bin/bash
+set -e
+
+# این اسکریپت فایل App.js پروژه را با نسخه‌ی اصلاح‌شده (رفع باگ تایمر) جایگزین می‌کند
+# و سپس تغییرات را روی گیت‌هاب push می‌کند.
+# این اسکریپت را داخل پوشه‌ی اصلی پروژه (همان‌جایی که App.js و پوشه .git قرار دارند) اجرا کن:
+#   bash apply_timer_fix.sh
+
+echo "در حال نوشتن نسخه‌ی اصلاح‌شده‌ی App.js ..."
+
+cat > App.js << 'EOF_HABITTRACKER_APPJS'
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
@@ -3534,3 +3545,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+EOF_HABITTRACKER_APPJS
+
+echo "فایل App.js با موفقیت جایگزین شد."
+
+git add .
+git commit -m "fix: رفع باگ ریس‌کاندیشن تایمر معکوس عادت‌ها (عدم استارت و عدم لغو نوتیفیکیشن)"
+git push -u origin main
+
+echo "تغییرات با موفقیت روی گیت‌هاب push شد."

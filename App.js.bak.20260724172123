@@ -1647,68 +1647,48 @@ function RootApp() {
     return () => clearInterval(interval);
   }, [activeTimers]);
 
-  const activeTimersRef = useRef(activeTimers);
-  useEffect(() => {
-    activeTimersRef.current = activeTimers;
-  }, [activeTimers]);
-
   const toggleTimer = useCallback(async (habit) => {
     if (!habit.timerSeconds || habit.timerSeconds <= 0) return;
 
-    // تصمیم فعال/غیرفعال بودن را هم‌گام (synchronous) و مستقیماً از روی
-    // activeTimersRef می‌گیریم، نه از داخل callback ناهمگام setState —
-    // چون آن callback همیشه بلافاصله اجرا نمی‌شود و باعث می‌شد گاهی
-    // این تصمیم اشتباه (همیشه "غیرفعال") خوانده شود.
-    const current = activeTimersRef.current[habit.id];
-
-    if (current) {
-      // در حال اجراست → لغو کن
-      const next = { ...activeTimersRef.current };
-      delete next[habit.id];
-      activeTimersRef.current = next;
-      setActiveTimers(next);
-
-      if (current.notifId) {
-        await Notifications.cancelScheduledNotificationAsync(current.notifId).catch(() => {});
+    if (activeTimers[habit.id]) {
+      const timerInfo = activeTimers[habit.id];
+      if (timerInfo && timerInfo.notifId) {
+        await Notifications.cancelScheduledNotificationAsync(timerInfo.notifId).catch(() => {});
       }
-      return;
-    }
-
-    const seconds = parseInt(habit.timerSeconds, 10);
-    if (isNaN(seconds) || seconds <= 0) return;
-
-    let notifId = null;
-    try {
-      await Notifications.requestPermissionsAsync();
-      notifId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '⏱️ پایان تایمر عادت',
-          body: `تایمر ${habit.title} تموم شد، برو انجامش بده`,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          android: { channelId: TIMER_CHANNEL_ID },
-        },
-        trigger: { type: 'timeInterval', seconds: seconds, repeats: false },
+      setActiveTimers((prev) => {
+        const next = { ...prev };
+        delete next[habit.id];
+        return next;
       });
-    } catch (e) {
-      console.warn('Failed to schedule timer notification', e);
-    }
+    } else {
+      const seconds = parseInt(habit.timerSeconds, 10);
+      if (isNaN(seconds) || seconds <= 0) return;
 
-    // اگر بین این لحظه و بالا کاربر دوباره کلیک زده و تایمر را خاموش کرده،
-    // آن انتخاب را محترم می‌شماریم (و نوتیف تازه‌زمان‌بندی‌شده را کنسل می‌کنیم).
-    if (activeTimersRef.current[habit.id]) {
-      if (notifId) {
-        await Notifications.cancelScheduledNotificationAsync(notifId).catch(() => {});
+      let notifId = null;
+      try {
+        await Notifications.requestPermissionsAsync();
+        notifId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '⏱️ پایان تایمر عادت',
+            body: `تایمر ${habit.title} تموم شد، برو انجامش بده`,
+            sound: true,
+            priority: Notifications.AndroidNotificationPriority.MAX,
+            android: { channelId: TIMER_CHANNEL_ID },
+          },
+          trigger: { type: 'timeInterval', seconds: seconds, repeats: false },
+        });
+      } catch (e) {
+        console.warn('Failed to schedule timer notification', e);
       }
-      return;
-    }
 
-    const endTime = Date.now() + seconds * 1000;
-    const next = { ...activeTimersRef.current, [habit.id]: { endTime, notifId } };
-    activeTimersRef.current = next;
-    setActiveTimers(next);
-    setNowTick(Date.now());
-  }, []);
+      const endTime = Date.now() + seconds * 1000;
+      setNowTick(Date.now());
+      setActiveTimers((prev) => ({
+        ...prev,
+        [habit.id]: { endTime, notifId },
+      }));
+    }
+  }, [activeTimers]);
 
   useEffect(() => {
     (async () => {
