@@ -1,3 +1,14 @@
+#!/bin/bash
+set -e
+
+# این اسکریپت فایل App.js پروژه را با نسخه‌ی جدید (تیک هر ۵ ثانیه + نوتیف پایان تضمینی) جایگزین می‌کند
+# و سپس تغییرات را روی گیت‌هاب push می‌کند.
+# این اسکریپت را داخل پوشه‌ی اصلی پروژه (همان‌جایی که App.js و پوشه .git قرار دارند) اجرا کن:
+#   bash apply_guaranteed_timer.sh
+
+echo "در حال نوشتن نسخه‌ی جدید App.js ..."
+
+cat > App.js << 'EOF_HABITTRACKER_APPJS'
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
@@ -3777,3 +3788,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+EOF_HABITTRACKER_APPJS
+
+echo "فایل App.js با موفقیت جایگزین شد."
+
+git add .
+git commit -m "fix: تیک هر 5 ثانیه (به‌جای 1 ثانیه) + نوتیف پایان تضمینی سطح سیستم‌عامل برای تایمر رندوم"
+git push -u origin main
+
+echo "تغییرات با موفقیت روی گیت‌هاب push شد."
