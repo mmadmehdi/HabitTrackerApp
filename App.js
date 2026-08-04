@@ -1352,6 +1352,8 @@ const HabitCard = memo(function HabitCard({
             style={[styles.reorderBtn, isLast && styles.reorderBtnDisabled]}
             disabled={isLast}
             onPress={handleMoveDown}
+            activeOpacity={0.75}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <ChevronDown size={20} color={COLORS.primary} />
           </TouchableOpacity>
@@ -1360,6 +1362,8 @@ const HabitCard = memo(function HabitCard({
             style={[styles.reorderBtn, isFirst && styles.reorderBtnDisabled]}
             disabled={isFirst}
             onPress={handleMoveUp}
+            activeOpacity={0.75}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <ChevronUp size={20} color={COLORS.primary} />
           </TouchableOpacity>
@@ -1821,6 +1825,7 @@ function RootApp() {
   const [timerInput, setTimerInput] = useState('');
   const [reorderMode, setReorderMode] = useState(false);
   const [categoryReorderMode, setCategoryReorderMode] = useState(false);
+  const skipHabitReminderRescheduleRef = useRef(false);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   // آیا دسته‌بندی‌ها از حافظه‌ی گوشی لود شده‌اند؟ تا قبل از این لحظه، state
   // فقط دسته‌بندی پیش‌فرض («روزانه») را دارد و هر محاسبه‌ای که به دسته‌بندی
@@ -2067,6 +2072,10 @@ function RootApp() {
 
   useEffect(() => {
     if (!loaded || !notifLoaded || !categoriesLoaded) return;
+    if (skipHabitReminderRescheduleRef.current) {
+      skipHabitReminderRescheduleRef.current = false;
+      return;
+    }
     scheduleHabitReminder(habits, categories, notifSettings);
   }, [habits, categories, notifSettings, loaded, notifLoaded, categoriesLoaded]);
 
@@ -2362,19 +2371,22 @@ function RootApp() {
     [habits, persist]
   );
 
-  const moveHabit = useCallback(
-    (habitId, direction) => {
-      const idx = habits.findIndex((h) => h.id === habitId);
-      if (idx < 0) return;
+  const moveHabit = useCallback((habitId, direction) => {
+    skipHabitReminderRescheduleRef.current = true;
+    setHabits((currentHabits) => {
+      const idx = currentHabits.findIndex((h) => h.id === habitId);
+      if (idx < 0) return currentHabits;
       const newIdx = idx + direction;
-      if (newIdx < 0 || newIdx >= habits.length) return;
-      const next = [...habits];
+      if (newIdx < 0 || newIdx >= currentHabits.length) return currentHabits;
+      const next = [...currentHabits];
       const [item] = next.splice(idx, 1);
       next.splice(newIdx, 0, item);
-      persist(next);
-    },
-    [habits, persist]
-  );
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch((e) =>
+        console.warn('Failed to save habits', e)
+      );
+      return next;
+    });
+  }, []);
 
   const deleteHabit = useCallback(
     (id) => {

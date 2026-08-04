@@ -109,6 +109,8 @@ export const HabitCard = memo(function HabitCard({
             style={[styles.reorderBtn, isLast && styles.reorderBtnDisabled]}
             disabled={isLast}
             onPress={handleMoveDown}
+            activeOpacity={0.75}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <ChevronDown size={20} color={COLORS.primary} />
           </TouchableOpacity>
@@ -117,6 +119,8 @@ export const HabitCard = memo(function HabitCard({
             style={[styles.reorderBtn, isFirst && styles.reorderBtnDisabled]}
             disabled={isFirst}
             onPress={handleMoveUp}
+            activeOpacity={0.75}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <ChevronUp size={20} color={COLORS.primary} />
           </TouchableOpacity>
