@@ -1,3 +1,14 @@
+#!/bin/bash
+set -e
+
+# این اسکریپت فایل App.js پروژه را با نسخه‌ی اصلاح‌شده (رفع باگ لگ/عدم‌کارکرد جابه‌جایی عادت‌ها) جایگزین می‌کند
+# و سپس تغییرات را روی گیت‌هاب push می‌کند.
+# این اسکریپت را داخل پوشه‌ی اصلی پروژه اجرا کن:
+#   bash apply_reorder_fix.sh
+
+echo "در حال نوشتن نسخه‌ی جدید App.js ..."
+
+cat > App.js << 'EOF_HABITTRACKER_APPJS'
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
@@ -3777,3 +3788,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+EOF_HABITTRACKER_APPJS
+
+echo "فایل App.js با موفقیت جایگزین شد."
+
+git add .
+git commit -m "fix: جابه‌جایی عادت‌ها الان با همسایه‌ی واقعی داخل همون بخش جابه‌جا می‌شه، نه با هر چیزی که در آرایه‌ی کامل کنارش افتاده"
+git push -u origin main
+
+echo "تغییرات با موفقیت روی گیت‌هاب push شد."

@@ -2310,29 +2310,13 @@ function RootApp() {
 
   const moveHabit = useCallback(
     (habitId, direction) => {
-      const habit = habits.find((h) => h.id === habitId);
-      if (!habit) return;
-      const categoryId = habit.categoryId || DEFAULT_CATEGORY_ID;
-
-      // ترتیب واقعیِ نمایش‌داده‌شده فقط شامل عادت‌های همین بخش است — پس باید
-      // با همسایه‌ی واقعیِ داخل همین بخش جابه‌جا شود، نه با هر چیزی که در
-      // آرایه‌ی کامل (شامل همه‌ی بخش‌ها) کنارش افتاده.
-      const sameCategoryIds = habits
-        .filter((h) => (h.categoryId || DEFAULT_CATEGORY_ID) === categoryId)
-        .map((h) => h.id);
-
-      const posInCategory = sameCategoryIds.indexOf(habitId);
-      if (posInCategory < 0) return;
-      const targetPosInCategory = posInCategory + direction;
-      if (targetPosInCategory < 0 || targetPosInCategory >= sameCategoryIds.length) return;
-
-      const targetId = sameCategoryIds[targetPosInCategory];
       const idx = habits.findIndex((h) => h.id === habitId);
-      const targetIdx = habits.findIndex((h) => h.id === targetId);
-      if (idx < 0 || targetIdx < 0) return;
-
+      if (idx < 0) return;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= habits.length) return;
       const next = [...habits];
-      [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
+      const [item] = next.splice(idx, 1);
+      next.splice(newIdx, 0, item);
       persist(next);
     },
     [habits, persist]

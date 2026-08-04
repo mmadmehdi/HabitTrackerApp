@@ -23,6 +23,72 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
+
+const TimerContext = React.createContext({ activeTimers: {}, onToggleTimer: () => {} });
+
+const TimerBadge = React.memo(function TimerBadge({ habit }) {
+  const { activeTimers, onToggleTimer } = React.useContext(TimerContext);
+  const [now, setNow] = React.useState(Date.now());
+  const timerInfo = activeTimers ? activeTimers[habit.id] : null;
+
+  React.useEffect(() => {
+    if (!timerInfo) return;
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timerInfo]);
+
+  const remainingSecs = timerInfo ? Math.max(0, Math.ceil((timerInfo.endTime - now) / 1000)) : null;
+
+  return (
+    <TouchableOpacity
+      style={[styles.timerBadge, timerInfo && styles.timerBadgeActive]}
+      activeOpacity={0.7}
+      onPress={() => onToggleTimer(habit)}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <Clock size={13} color={timerInfo ? '#FFFFFF' : COLORS.primary} style={{ marginLeft: 4 }} />
+      <Text style={[styles.timerBadgeText, timerInfo && styles.timerBadgeTextActive]}>
+        {timerInfo ? formatTimerEnglish(remainingSecs) : formatTimerEnglish(habit.timerSeconds)}
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
+
+const TimerContext = React.createContext({ activeTimers: {}, onToggleTimer: () => {} });
+
+const TimerBadge = React.memo(function TimerBadge({ habit }) {
+  const { activeTimers, onToggleTimer } = React.useContext(TimerContext);
+  const [now, setNow] = React.useState(Date.now());
+  const timerInfo = activeTimers ? activeTimers[habit.id] : null;
+
+  React.useEffect(() => {
+    if (!timerInfo) return;
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timerInfo]);
+
+  const remainingSecs = timerInfo ? Math.max(0, Math.ceil((timerInfo.endTime - now) / 1000)) : null;
+
+  return (
+    <TouchableOpacity
+      style={[styles.timerBadge, timerInfo && styles.timerBadgeActive]}
+      activeOpacity={0.7}
+      onPress={() => onToggleTimer(habit)}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <Clock size={13} color={timerInfo ? '#FFFFFF' : COLORS.primary} style={{ marginLeft: 4 }} />
+      <Text style={[styles.timerBadgeText, timerInfo && styles.timerBadgeTextActive]}>
+        {timerInfo ? formatTimerEnglish(remainingSecs) : formatTimerEnglish(habit.timerSeconds)}
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
 import {
   Check,
   Plus,
@@ -617,6 +683,24 @@ const AnimatedPressable = memo(function AnimatedPressable({
     }).start();
   }, [scale]);
 
+  // FIX: Prevent gesture conflict with inner buttons during reorder mode
+  if (!onPress && !onLongPress) {
+    return (
+      <Animated.View style={[style, { transform: [{ scale }] }]}>
+        {children}
+      </Animated.View>
+    );
+  }
+
+  // FIX: Prevent gesture conflict with inner buttons during reorder mode
+  if (!onPress && !onLongPress) {
+    return (
+      <Animated.View style={[style, { transform: [{ scale }] }]}>
+        {children}
+      </Animated.View>
+    );
+  }
+
   return (
     <TouchableOpacity
       activeOpacity={0.88}
@@ -718,9 +802,6 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
   onClearStatus,
   onBumpProgress,
   onEdit,
-  activeTimers,
-  onToggleTimer,
-  nowTick,
 }) {
   const insets = useSafeAreaInsets();
   const [view, setView] = useState(() => {
@@ -870,16 +951,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
               {habit.title}
             </Text>
             {!!habit.timerSeconds && habit.timerSeconds > 0 && (
-              <TouchableOpacity
-                style={[styles.timerBadge, timerInfo && styles.timerBadgeActive]}
-                activeOpacity={0.7}
-                onPress={() => onToggleTimer(habit)}
-              >
-                <Clock size={13} color={timerInfo ? '#FFFFFF' : COLORS.primary} style={{ marginLeft: 4 }} />
-                <Text style={[styles.timerBadgeText, timerInfo && styles.timerBadgeTextActive]}>
-                  {timerInfo ? formatTimerEnglish(remainingSecs) : formatTimerEnglish(habit.timerSeconds)}
-                </Text>
-              </TouchableOpacity>
+              <TimerBadge habit={habit} />
             )}
           </View>
           <Text style={styles.detailSubtitle}>
@@ -1174,9 +1246,6 @@ const HabitCard = memo(function HabitCard({
   todayKey,
   onIncrementGoal,
   onSetStatus,
-  activeTimers,
-  onToggleTimer,
-  nowTick,
 }) {
   const history = habit.history || {};
   const category = useMemo(
@@ -1236,17 +1305,7 @@ const HabitCard = memo(function HabitCard({
           </Text>
 
           {!!habit.timerSeconds && habit.timerSeconds > 0 && !reorderMode && (
-            <TouchableOpacity
-              style={[styles.timerBadge, timerInfo && styles.timerBadgeActive]}
-              activeOpacity={0.7}
-              onPress={() => onToggleTimer(habit)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Clock size={13} color={timerInfo ? '#FFFFFF' : COLORS.primary} style={{ marginLeft: 4 }} />
-              <Text style={[styles.timerBadgeText, timerInfo && styles.timerBadgeTextActive]}>
-                {timerInfo ? formatTimerEnglish(remainingSecs) : formatTimerEnglish(habit.timerSeconds)}
-              </Text>
-            </TouchableOpacity>
+            <TimerBadge habit={habit} />
           )}
 
           {hasGoal && !reorderMode && (
@@ -1593,9 +1652,6 @@ const HomeScreen = memo(function HomeScreen({
   onDeleteCategory,
   onIncrementGoal,
   onSetStatus,
-  activeTimers,
-  onToggleTimer,
-  nowTick,
 }) {
   const insets = useSafeAreaInsets();
   const [todayJy, todayJm, todayJd] = getTodayJalali();
@@ -1711,7 +1767,7 @@ const HomeScreen = memo(function HomeScreen({
               categories={categories}
               onOpenHabit={onOpenHabit}
               onEditHabit={onEditHabit}
-              onLongPress={onEnterReorder}
+              onLongPress={reorderMode ? undefined : onEnterReorder}
               reorderMode={reorderMode}
               onMoveHabit={onMoveHabit}
               isFirst={idx === 0}
@@ -1720,9 +1776,7 @@ const HomeScreen = memo(function HomeScreen({
               todayKey={todayKey}
               onIncrementGoal={onIncrementGoal}
               onSetStatus={onSetStatus}
-              activeTimers={activeTimers}
-              onToggleTimer={onToggleTimer}
-              nowTick={nowTick}
+
             />
           ))
         )}
@@ -1783,7 +1837,7 @@ function RootApp() {
   const [notifDraft, setNotifDraft] = useState(DEFAULT_NOTIF_SETTINGS);
 
   const [activeTimers, setActiveTimers] = useState({});
-  const [nowTick, setNowTick] = useState(Date.now());
+
   // هر بار برنامه به فورگراند می‌آید یکی زیاد می‌شود تا نوتیفیکیشن دائمی با
   // تاریخِ «امروزِ» جدید از نو محاسبه شود (مثلاً وقتی روز عوض شده باشد).
   const [appActiveTick, setAppActiveTick] = useState(0);
@@ -2310,29 +2364,13 @@ function RootApp() {
 
   const moveHabit = useCallback(
     (habitId, direction) => {
-      const habit = habits.find((h) => h.id === habitId);
-      if (!habit) return;
-      const categoryId = habit.categoryId || DEFAULT_CATEGORY_ID;
-
-      // ترتیب واقعیِ نمایش‌داده‌شده فقط شامل عادت‌های همین بخش است — پس باید
-      // با همسایه‌ی واقعیِ داخل همین بخش جابه‌جا شود، نه با هر چیزی که در
-      // آرایه‌ی کامل (شامل همه‌ی بخش‌ها) کنارش افتاده.
-      const sameCategoryIds = habits
-        .filter((h) => (h.categoryId || DEFAULT_CATEGORY_ID) === categoryId)
-        .map((h) => h.id);
-
-      const posInCategory = sameCategoryIds.indexOf(habitId);
-      if (posInCategory < 0) return;
-      const targetPosInCategory = posInCategory + direction;
-      if (targetPosInCategory < 0 || targetPosInCategory >= sameCategoryIds.length) return;
-
-      const targetId = sameCategoryIds[targetPosInCategory];
       const idx = habits.findIndex((h) => h.id === habitId);
-      const targetIdx = habits.findIndex((h) => h.id === targetId);
-      if (idx < 0 || targetIdx < 0) return;
-
+      if (idx < 0) return;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= habits.length) return;
       const next = [...habits];
-      [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
+      const [item] = next.splice(idx, 1);
+      next.splice(newIdx, 0, item);
       persist(next);
     },
     [habits, persist]
@@ -2381,6 +2419,7 @@ function RootApp() {
   }
 
   return (
+    <TimerContext.Provider value={{ activeTimers, onToggleTimer: toggleTimer }}>
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <HomeScreen
         habits={habits}
@@ -2403,9 +2442,7 @@ function RootApp() {
         onAddCategory={openAddCategoryModal}
         onDeleteCategory={deleteCategory}
         onSetStatus={setStatus}
-        activeTimers={activeTimers}
-        onToggleTimer={toggleTimer}
-        nowTick={nowTick}
+
       />
 
       {screen === 'detail' && selectedHabit && (
@@ -2419,9 +2456,7 @@ function RootApp() {
             onClearStatus={clearStatus}
             onBumpProgress={bumpProgress}
             onEdit={handleEditSelected}
-            activeTimers={activeTimers}
-            onToggleTimer={toggleTimer}
-            nowTick={nowTick}
+
           />
         </View>
       )}
