@@ -16,6 +16,8 @@ import {
   AppState,
   Switch,
   Animated,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -23,71 +25,6 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
-
-const TimerContext = React.createContext({ activeTimers: {}, onToggleTimer: () => {} });
-
-const TimerBadge = React.memo(function TimerBadge({ habit }) {
-  const { activeTimers, onToggleTimer } = React.useContext(TimerContext);
-  const [now, setNow] = React.useState(Date.now());
-  const timerInfo = activeTimers ? activeTimers[habit.id] : null;
-
-  React.useEffect(() => {
-    if (!timerInfo) return;
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [timerInfo]);
-
-  const remainingSecs = timerInfo ? Math.max(0, Math.ceil((timerInfo.endTime - now) / 1000)) : null;
-
-  return (
-    <TouchableOpacity
-      style={[styles.timerBadge, timerInfo && styles.timerBadgeActive]}
-      activeOpacity={0.7}
-      onPress={() => onToggleTimer(habit)}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-    >
-      <Clock size={13} color={timerInfo ? '#FFFFFF' : COLORS.primary} style={{ marginLeft: 4 }} />
-      <Text style={[styles.timerBadgeText, timerInfo && styles.timerBadgeTextActive]}>
-        {timerInfo ? formatTimerEnglish(remainingSecs) : formatTimerEnglish(habit.timerSeconds)}
-      </Text>
-    </TouchableOpacity>
-  );
-});
-
-
-const TimerContext = React.createContext({ activeTimers: {}, onToggleTimer: () => {} });
-
-const TimerBadge = React.memo(function TimerBadge({ habit }) {
-  const { activeTimers, onToggleTimer } = React.useContext(TimerContext);
-  const [now, setNow] = React.useState(Date.now());
-  const timerInfo = activeTimers ? activeTimers[habit.id] : null;
-
-  React.useEffect(() => {
-    if (!timerInfo) return;
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [timerInfo]);
-
-  const remainingSecs = timerInfo ? Math.max(0, Math.ceil((timerInfo.endTime - now) / 1000)) : null;
-
-  return (
-    <TouchableOpacity
-      style={[styles.timerBadge, timerInfo && styles.timerBadgeActive]}
-      activeOpacity={0.7}
-      onPress={() => onToggleTimer(habit)}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-    >
-      <Clock size={13} color={timerInfo ? '#FFFFFF' : COLORS.primary} style={{ marginLeft: 4 }} />
-      <Text style={[styles.timerBadgeText, timerInfo && styles.timerBadgeTextActive]}>
-        {timerInfo ? formatTimerEnglish(remainingSecs) : formatTimerEnglish(habit.timerSeconds)}
-      </Text>
-    </TouchableOpacity>
-  );
-});
 
 import {
   Check,
@@ -107,6 +44,13 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react-native';
+
+/* ============================================================
+   ENABLE LAYOUT ANIMATION ON ANDROID
+   ============================================================ */
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 /* ============================================================
    CONSTANTS & APPLE HIG DESIGN SYSTEM
@@ -143,30 +87,30 @@ Notifications.setNotificationHandler({
 
 /* ---------- Apple HIG Midnight Color Palette ---------- */
 const COLORS = {
-  bg: '#000000',                           // Pure iOS Pitch Black
-  card: '#1C1C1E',                         // iOS Secondary System Background
-  cardBorder: 'rgba(255, 255, 255, 0.08)',   // Ultra-fine stroke
-  cardSurface: '#2C2C2E',                  // iOS Tertiary Background
-  input: '#2C2C2E',                        // iOS Form Surface
+  bg: '#000000',
+  card: '#1C1C1E',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  cardSurface: '#2C2C2E',
+  input: '#2C2C2E',
 
-  primary: '#0A84FF',                      // iOS System Electric Blue
+  primary: '#0A84FF',
   primarySoft: 'rgba(10, 132, 255, 0.15)',
 
-  success: '#30D158',                      // iOS System Mint Green
+  success: '#30D158',
   successSoft: 'rgba(48, 209, 88, 0.15)',
   successDeep: '#0D2D1B',
 
-  error: '#FF453A',                        // iOS System Coral Red
+  error: '#FF453A',
   errorSoft: 'rgba(255, 69, 58, 0.15)',
 
-  today: '#FF9F0A',                        // iOS System Amber / Orange
+  today: '#FF9F0A',
   todaySoft: 'rgba(255, 159, 10, 0.15)',
 
-  text: '#FFFFFF',                         // Primary Label
-  subtext: 'rgba(235, 235, 245, 0.60)',    // Secondary Label
-  dim: 'rgba(235, 235, 245, 0.30)',        // Tertiary Label
+  text: '#FFFFFF',
+  subtext: 'rgba(235, 235, 245, 0.60)',
+  dim: 'rgba(235, 235, 245, 0.30)',
 
-  overlay: 'rgba(0, 0, 0, 0.78)',          // Backdrop
+  overlay: 'rgba(0, 0, 0, 0.78)',
 };
 
 const WEEKDAYS_FA = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
@@ -393,6 +337,7 @@ function backfillMissedDays(list, categories) {
   return { next, changed };
 }
 
+
 /* ============================================================
    NOTIFICATIONS
    ============================================================ */
@@ -425,8 +370,6 @@ async function configureNotificationChannel() {
     bypassDnd: true,
   });
 
-  // کانال جدا برای نوتیفیکیشن دائمی (ongoing) — بدون صدا/لرزش تکراری،
-  // چون هر بار محتوایش آپدیت می‌شود نه این‌که یک هشدار تازه باشد.
   await Notifications.setNotificationChannelAsync(PERSISTENT_CHANNEL_ID, {
     name: 'یادآور دائمی عادت‌ها',
     importance: Notifications.AndroidImportance.DEFAULT,
@@ -436,10 +379,6 @@ async function configureNotificationChannel() {
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
   });
 
-  // کانال جدا با اهمیت پایین برای نوتیف «تایمر رندوم شروع شد» — یک نوتیف
-  // بی‌صدا و بدون هشدار (heads-up) که فقط یک بار همان لحظه‌ی زدن دکمه نمایش
-  // داده می‌شود تا کاربر بفهمد دکمه کار کرده؛ در لحظه‌ی پایان از کانال
-  // TIMER_CHANNEL_ID (فوری/پرصدا) استفاده می‌کنیم.
   await Notifications.setNotificationChannelAsync(RANDOM_TIMER_LIVE_CHANNEL_ID, {
     name: 'شروع تایمر عادت رندوم',
     importance: Notifications.AndroidImportance.LOW,
@@ -534,10 +473,6 @@ async function sendTestHabitNotification(habits, categories) {
   });
 }
 
-// نوتیفیکیشن دائمی (ongoing): با sticky + autoDismiss:false، هم با لمس و هم
-// با کشیدن (swipe) پاک نمی‌شود — فقط با غیرفعال کردن نوتیفیکیشن‌های برنامه
-// از تنظیمات گوشی از بین می‌رود. هر بار که لیست عادت‌ها/دسته‌بندی‌ها تغییر
-// کند، همین نوتیفیکیشن (با همان identifier) با محتوای تازه جایگزین می‌شود.
 async function presentPersistentReminder(habits, categories) {
   try {
     const [jy, jm, jd] = getTodayJalali();
@@ -566,23 +501,6 @@ async function presentPersistentReminder(habits, categories) {
   }
 }
 
-// وقتی دکمه‌ی «تایمر عادت رندوم» روی نوتیفیکیشن دائمی زده می‌شود: یکی از
-// عادت‌های هنوز انجام‌نشده‌ی امروز به‌صورت رندوم انتخاب می‌شود، بلافاصله یک
-// نوتیف بی‌صدای «تایمر شروع شد» نمایش داده می‌شود (نشانه‌ای که کاربر بفهمد
-// دکمه کار کرده) و ۳۰ ثانیه بعد نوتیف فوری (urgent) «پایان تایمر» می‌رسد.
-//
-// نکته‌ی مهم طراحی: دیگر هیچ شمارش معکوس زنده‌ای در جاوااسکریپت وجود ندارد.
-// نسخه‌ی قبلی نوتیف را هر ۵ ثانیه آپدیت می‌کرد، ولی وقتی برنامه در پس‌زمینه
-// بود اندروید جاوااسکریپت را فریز می‌کرد؛ بعداً با باز شدن برنامه همان
-// شمارنده‌ی فریزشده بیدار می‌شد، از همان‌جا ادامه می‌داد و یک «پایان تایمر»
-// تکراری هم می‌فرستاد. در طراحی جدید:
-//   - نوتیف شروع فقط یک بار، همان لحظه، نمایش داده می‌شود و دیگر آپدیت نمی‌شود.
-//   - نوتیف پایان را خودِ سیستم‌عامل (نه جاوااسکریپت) سر ۳۰ ثانیه ارسال
-//     می‌کند؛ پس حتی اگر برنامه بسته/کشته شده باشد هم دقیقاً یک بار می‌رسد و
-//     هیچ نسخه‌ی تکراری‌ای وجود ندارد.
-//   - هر دو نوتیف از یک identifier مشترک استفاده می‌کنند، بنابراین نوتیف
-//     پایان به‌طور خودکار (توسط خود اندروید، بدون نیاز به اجرای جاوااسکریپت)
-//     جایگزین نوتیف شروع می‌شود.
 async function scheduleRandomHabitTimer(habits, categories) {
   const [jy, jm, jd] = getTodayJalali();
   const todayKey = dateKey(jy, jm, jd);
@@ -601,16 +519,10 @@ async function scheduleRandomHabitTimer(habits, categories) {
     await Notifications.requestPermissionsAsync();
   } catch (e) {}
 
-  // اگر تایمر رندوم قبلی هنوز به پایان نرسیده، نوتیف پایانِ زمان‌بندی‌شده‌اش
-  // را لغو می‌کنیم و از نو (با عادت تازه‌ی انتخاب‌شده) شروع می‌کنیم — تا دو
-  // نوتیف پایان پشت سر هم نیاید.
   try {
     await Notifications.cancelScheduledNotificationAsync(RANDOM_TIMER_LIVE_ID);
   } catch (e) {}
 
-  // نوتیف پایان — با trigger واقعی سیستم‌عامل (نه تایمر جاوااسکریپت) زمان‌بندی
-  // می‌شود، پس دقیقاً ۳۰ ثانیه بعد می‌رسد؛ حتی اگر برنامه در همین حین به
-  // پس‌زمینه برود یا کامل کشته شود.
   try {
     await Notifications.scheduleNotificationAsync({
       identifier: RANDOM_TIMER_LIVE_ID,
@@ -627,10 +539,6 @@ async function scheduleRandomHabitTimer(habits, categories) {
     console.warn('Failed to schedule timer-finished notification', e);
   }
 
-  // نوتیف بی‌صدای «تایمر شروع شد» — همان نشانه‌ای که لازم است تا کاربر مطمئن
-  // شود دکمه کار کرده. فقط یک بار نمایش داده می‌شود و هرگز آپدیت نمی‌شود؛
-  // ۳۰ ثانیه بعد نوتیف پایان (با همان identifier) خودبه‌خود جایگزینش می‌شود.
-  // کاربر هم هر وقت بخواهد می‌تواند با لمس/کشیدن پاکش کند.
   try {
     await Notifications.scheduleNotificationAsync({
       identifier: RANDOM_TIMER_LIVE_ID,
@@ -646,6 +554,46 @@ async function scheduleRandomHabitTimer(habits, categories) {
     console.warn('Failed to present timer-started notification', e);
   }
 }
+
+/* ============================================================
+   TIMER CONTEXT
+   ============================================================ */
+
+const TimerContext = React.createContext({
+  activeTimers: {},
+  nowTick: Date.now(),
+  onToggleTimer: () => {},
+});
+
+const TimerBadge = memo(function TimerBadge({ habit }) {
+  const { activeTimers, onToggleTimer } = React.useContext(TimerContext);
+  const [now, setNow] = useState(Date.now());
+  const timerInfo = activeTimers ? activeTimers[habit.id] : null;
+
+  useEffect(() => {
+    if (!timerInfo) return;
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timerInfo]);
+
+  const remainingSecs = timerInfo ? Math.max(0, Math.ceil((timerInfo.endTime - now) / 1000)) : null;
+
+  return (
+    <TouchableOpacity
+      onPress={() => onToggleTimer(habit)}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <View style={[styles.timerBadge, timerInfo && styles.timerBadgeActive]}>
+        <Clock size={13} color={timerInfo ? '#FFFFFF' : COLORS.primary} style={{ marginLeft: 4 }} />
+        <Text style={[styles.timerBadgeText, timerInfo && styles.timerBadgeTextActive]}>
+          {timerInfo ? formatTimerEnglish(remainingSecs) : formatTimerEnglish(habit.timerSeconds)}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 /* ============================================================
    APPLE TACTILE MICRO-INTERACTION COMPONENTS
@@ -683,54 +631,44 @@ const AnimatedPressable = memo(function AnimatedPressable({
     }).start();
   }, [scale]);
 
-  // FIX: Prevent gesture conflict with inner buttons during reorder mode
   if (!onPress && !onLongPress) {
     return (
-      <Animated.View style={[style, { transform: [{ scale }] }]}>
+      <View style={style}>
         {children}
-      </Animated.View>
-    );
-  }
-
-  // FIX: Prevent gesture conflict with inner buttons during reorder mode
-  if (!onPress && !onLongPress) {
-    return (
-      <Animated.View style={[style, { transform: [{ scale }] }]}>
-        {children}
-      </Animated.View>
+      </View>
     );
   }
 
   return (
     <TouchableOpacity
-      activeOpacity={0.88}
+      activeOpacity={1}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={delayLongPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
       disabled={disabled}
       hitSlop={hitSlop}
     >
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
+      <Animated.View style={[{ transform: [{ scale }] }, style]}>
+        {children}
+      </Animated.View>
     </TouchableOpacity>
   );
 });
 
 const StatBox = memo(function StatBox({ value, numerator, denominator, label, color, softColor }) {
   return (
-    <View style={styles.statBox}>
-      <View style={[styles.statIconDot, { backgroundColor: softColor || COLORS.primarySoft }]}>
-        <View style={[styles.statIconDotInner, { backgroundColor: color || COLORS.primary }]} />
+    <View style={[styles.statBox]}>
+      <View style={[styles.statIconDot, { backgroundColor: softColor }]}>
+        <View style={[styles.statIconDotInner, { backgroundColor: color }]} />
       </View>
       {numerator != null ? (
-        <Text style={styles.statValue}>
-          <Text style={{ color: color || COLORS.text }}>{toPersianDigits(numerator)}</Text>
-          <Text style={{ color: COLORS.dim }}> / </Text>
-          <Text style={{ color: COLORS.text }}>{toPersianDigits(denominator)}</Text>
+        <Text style={[styles.statValue, { color }]}>
+          {toPersianDigits(numerator)} / {toPersianDigits(denominator)}
         </Text>
       ) : (
-        <Text style={[styles.statValue, { color: color || COLORS.text }]}>
+        <Text style={[styles.statValue, { color }]}>
           {toPersianDigits(value)}
         </Text>
       )}
@@ -750,19 +688,18 @@ const ScheduleChip = memo(function ScheduleChip({ category }) {
   );
 });
 
+
 /* ============================================================
-   DETAIL SCREEN (APPLE NATIVE DESIGN WITH LUCIDE)
+   DETAIL SCREEN
    ============================================================ */
 
 const DayCell = memo(function DayCell({ day, dayKey, isToday, status, dayIsScheduled, onLongPressDay }) {
   if (day === null) {
-    return <View style={styles.dayCell} />;
+    return <View style={[styles.dayCell, { opacity: 0 }]} />;
   }
   return (
     <TouchableOpacity
       style={styles.dayCell}
-      activeOpacity={0.6}
-      delayLongPress={450}
       onLongPress={() => onLongPressDay(dayKey, dayIsScheduled)}
     >
       <View
@@ -777,16 +714,16 @@ const DayCell = memo(function DayCell({ day, dayKey, isToday, status, dayIsSched
           style={[
             styles.dayNumber,
             isToday && styles.dayNumberToday,
-            (status === 'success' || (status === 'fail' && dayIsScheduled)) && styles.dayNumberMarked,
+            (status === 'success' || status === 'fail') && styles.dayNumberMarked,
           ]}
         >
           {toPersianDigits(day)}
         </Text>
         {status === 'success' && (
-          <Check size={11} color={COLORS.success} strokeWidth={3} style={{ marginTop: -2 }} />
+          <CheckCircle2 size={14} color={COLORS.success} style={{ position: 'absolute', bottom: 2 }} />
         )}
         {status === 'fail' && dayIsScheduled && (
-          <X size={11} color={COLORS.error} strokeWidth={3} style={{ marginTop: -2 }} />
+          <XCircle size={14} color={COLORS.error} style={{ position: 'absolute', bottom: 2 }} />
         )}
       </View>
     </TouchableOpacity>
@@ -796,6 +733,8 @@ const DayCell = memo(function DayCell({ day, dayKey, isToday, status, dayIsSched
 const HabitDetailScreen = memo(function HabitDetailScreen({
   habit,
   categories,
+  activeTimers,
+  nowTick,
   onBack,
   onDelete,
   onSetStatus,
@@ -939,35 +878,30 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
   const createdLabel = hasDayRestriction ? 'روزهای برنامه‌ریزی' : 'روزهای سپری شده';
 
   return (
-    <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
-      <View style={styles.detailHeader}>
-        <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.backBtn}>
-          <ArrowRight size={20} color={COLORS.text} />
-        </TouchableOpacity>
-        <View style={styles.detailHeaderTextWrap}>
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
-            <Text style={styles.detailTitle} numberOfLines={1}>
-              {habit.title}
+    <View style={[styles.detailOverlay, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.detailHeader}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+            <ArrowRight size={20} color={COLORS.text} />
+          </TouchableOpacity>
+          <View style={styles.detailHeaderTextWrap}>
+            <Text style={styles.detailTitle}>{habit.title}</Text>
+            <Text style={styles.detailSubtitle}>
+              {toPersianDigits(todayJalali[2])} {MONTHS_FA[todayJalali[1] - 1]} {toPersianDigits(todayJalali[0])}
             </Text>
-            {!!habit.timerSeconds && habit.timerSeconds > 0 && (
-              <TimerBadge habit={habit} />
-            )}
           </View>
-          <Text style={styles.detailSubtitle}>
-            {toPersianDigits(todayJalali[2])} {MONTHS_FA[todayJalali[1] - 1]} {toPersianDigits(todayJalali[0])}
-          </Text>
+          <TouchableOpacity style={styles.editBtn} onPress={onEdit}>
+            <Edit3 size={18} color={COLORS.primary} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={onEdit} activeOpacity={0.7} style={styles.editBtn}>
-          <Edit3 size={18} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        {!!habit.timerSeconds && habit.timerSeconds > 0 && (
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
+            <TimerBadge habit={habit} />
+          </View>
+        )}
+
         {hasDayRestriction && (
           <View style={styles.scheduleChipRow}>
             <ScheduleChip category={category} />
@@ -976,37 +910,35 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
 
         <View style={styles.statsRow}>
           <StatBox
-            numerator={totalSuccess}
-            denominator={daysElapsed}
-            label={successLabel}
+            value={totalSuccess}
             color={COLORS.success}
             softColor={COLORS.successSoft}
+            label={successLabel}
           />
           <StatBox
-            numerator={totalFail}
-            denominator={daysElapsed}
-            label={failLabel}
+            value={totalFail}
             color={COLORS.error}
             softColor={COLORS.errorSoft}
+            label={failLabel}
           />
           <StatBox
             value={daysElapsed}
-            label={createdLabel}
             color={COLORS.primary}
             softColor={COLORS.primarySoft}
+            label={createdLabel}
           />
         </View>
 
         <View style={styles.calendarCard}>
           <View style={styles.calendarNavRow}>
-            <TouchableOpacity onPress={goNextMonth} activeOpacity={0.7} style={styles.calendarNavBtn}>
-              <ChevronRight size={20} color={COLORS.text} />
+            <TouchableOpacity style={styles.calendarNavBtn} onPress={goNextMonth}>
+              <ChevronRight size={18} color={COLORS.text} />
             </TouchableOpacity>
             <Text style={styles.calendarMonthLabel}>
               {MONTHS_FA[view.jm - 1]} {toPersianDigits(view.jy)}
             </Text>
-            <TouchableOpacity onPress={goPrevMonth} activeOpacity={0.7} style={styles.calendarNavBtn}>
-              <ChevronLeft size={20} color={COLORS.text} />
+            <TouchableOpacity style={styles.calendarNavBtn} onPress={goPrevMonth}>
+              <ChevronLeft size={18} color={COLORS.text} />
             </TouchableOpacity>
           </View>
 
@@ -1023,7 +955,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
               <View key={rIdx} style={styles.calendarWeekRow}>
                 {row.map((day, cIdx) => {
                   if (day === null) {
-                    return <DayCell key={cIdx} day={null} />;
+                    return <DayCell key={`${rIdx}-${cIdx}`} day={null} />;
                   }
                   const key = dateKey(view.jy, view.jm, day);
                   const isToday =
@@ -1034,7 +966,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
                   const dayIsScheduled = isCategoryActiveOn(category, view.jy, view.jm, day);
                   return (
                     <DayCell
-                      key={cIdx}
+                      key={key}
                       day={day}
                       dayKey={key}
                       isToday={isToday}
@@ -1068,8 +1000,14 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
                 </Text>
               </View>
             </View>
-
-            <View style={styles.goalProgressTrack}>
+            <View
+              style={[
+                styles.goalProgressTrack,
+                {
+                  backgroundColor: COLORS.cardSurface,
+                },
+              ]}
+            >
               <View
                 style={[
                   styles.goalProgressFill,
@@ -1080,16 +1018,13 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
                 ]}
               />
             </View>
-
             <View style={styles.goalRow}>
               <TouchableOpacity
-                style={[styles.goalStepBtn, styles.goalStepBtnPlus]}
-                activeOpacity={0.7}
-                onPress={() => onBumpProgress(habit.id, todayKey, 1, habit.goal)}
+                style={styles.goalStepBtn}
+                onPress={() => onBumpProgress(habit.id, todayKey, -1, habit.goal)}
               >
-                <Plus size={20} color={COLORS.primary} strokeWidth={2.5} />
+                <Text style={styles.goalStepBtnText}>−</Text>
               </TouchableOpacity>
-
               <View style={styles.goalCenter}>
                 <Text style={styles.goalCount}>
                   {toPersianDigits(todayProgress)}
@@ -1102,13 +1037,11 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
                     : 'هدف امروز تکمیل شد 🎉'}
                 </Text>
               </View>
-
               <TouchableOpacity
-                style={styles.goalStepBtn}
-                activeOpacity={0.7}
-                onPress={() => onBumpProgress(habit.id, todayKey, -1, habit.goal)}
+                style={[styles.goalStepBtn, styles.goalStepBtnPlus]}
+                onPress={() => onBumpProgress(habit.id, todayKey, 1, habit.goal)}
               >
-                <Text style={styles.goalStepBtnText}>−</Text>
+                <Text style={[styles.goalStepBtnText, { color: COLORS.primary }]}>+</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1118,21 +1051,25 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
           <Text style={styles.actionQuestion}>
             آیا امروز عادت «{habit.title}» را انجام دادید؟
           </Text>
+
           {hasDayRestriction && !todayIsScheduled && (
             <Text style={styles.actionHintText}>
               این عادت برای امروز برنامه‌ریزی نشده است.
             </Text>
           )}
+
           <View style={styles.actionButtonsRow}>
             <TouchableOpacity
-              activeOpacity={0.7}
               style={[
                 styles.actionButton,
                 styles.actionButtonYes,
                 todayStatus === 'success' && styles.actionButtonYesActive,
+                hasDayRestriction && !todayIsScheduled && styles.actionButtonDisabled,
               ]}
               onPress={handleMarkSuccess}
+              disabled={hasDayRestriction && !todayIsScheduled}
             >
+              <Check size={18} color={todayStatus === 'success' ? '#FFFFFF' : COLORS.success} />
               <Text
                 style={[
                   styles.actionButtonText,
@@ -1140,11 +1077,10 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
                   todayStatus === 'success' && styles.actionButtonTextActive,
                 ]}
               >
-                ✓ بله
+                بله
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              activeOpacity={hasDayRestriction && !todayIsScheduled ? 0.4 : 0.7}
               style={[
                 styles.actionButton,
                 styles.actionButtonNo,
@@ -1154,6 +1090,7 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
               onPress={handleMarkFail}
               disabled={hasDayRestriction && !todayIsScheduled}
             >
+              <X size={18} color={todayStatus === 'fail' ? '#FFFFFF' : COLORS.error} />
               <Text
                 style={[
                   styles.actionButtonText,
@@ -1161,64 +1098,35 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
                   todayStatus === 'fail' && styles.actionButtonTextActive,
                 ]}
               >
-                ✕ خیر
+                خیر
               </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={confirmDelete}>
-          <Trash2 size={18} color={COLORS.error} style={{ marginLeft: 8 }} />
+        <TouchableOpacity style={styles.deleteBtn} onPress={confirmDelete}>
+          <Trash2 size={16} color={COLORS.error} style={{ marginLeft: 8 }} />
           <Text style={styles.deleteBtnText}>حذف کامل این عادت</Text>
         </TouchableOpacity>
       </ScrollView>
 
       {/* iOS Action Sheet Style Day Menu */}
-      <Modal
-        visible={dayMenu.visible}
-        animationType="fade"
-        transparent
-        onRequestClose={closeDayMenu}
-      >
-        <TouchableOpacity
-          style={styles.dayMenuOverlay}
-          activeOpacity={1}
-          onPress={closeDayMenu}
-        >
+      <Modal visible={dayMenu.visible} transparent animationType="fade">
+        <TouchableOpacity style={styles.dayMenuOverlay} activeOpacity={1} onPress={closeDayMenu}>
           <View style={styles.dayMenuCard}>
             <Text style={styles.dayMenuTitle}>ویرایش وضعیت روز</Text>
-
-            <TouchableOpacity
-              style={[styles.dayMenuOption, styles.dayMenuOptionSuccess]}
-              activeOpacity={0.7}
-              onPress={handleDayMenuSuccess}
-            >
+            <TouchableOpacity style={[styles.dayMenuOption, styles.dayMenuOptionSuccess]} onPress={handleDayMenuSuccess}>
               <Text style={styles.dayMenuOptionSuccessText}>✓ ثبت موفقیت</Text>
             </TouchableOpacity>
-
             {dayMenu.dayIsScheduled && (
-              <TouchableOpacity
-                style={[styles.dayMenuOption, styles.dayMenuOptionFail]}
-                activeOpacity={0.7}
-                onPress={handleDayMenuFail}
-              >
+              <TouchableOpacity style={[styles.dayMenuOption, styles.dayMenuOptionFail]} onPress={handleDayMenuFail}>
                 <Text style={styles.dayMenuOptionFailText}>✕ ثبت شکست</Text>
               </TouchableOpacity>
             )}
-
-            <TouchableOpacity
-              style={styles.dayMenuOption}
-              activeOpacity={0.7}
-              onPress={handleDayMenuClear}
-            >
-              <Text style={styles.dayMenuOptionText}>پاک کردن وضعیت</Text>
+            <TouchableOpacity style={[styles.dayMenuOption, styles.dayMenuOptionCancel]} onPress={handleDayMenuClear}>
+              <Text style={styles.dayMenuOptionCancelText}>پاک کردن وضعیت</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.dayMenuOption, styles.dayMenuOptionCancel]}
-              activeOpacity={0.7}
-              onPress={closeDayMenu}
-            >
+            <TouchableOpacity style={[styles.dayMenuOption, styles.dayMenuOptionCancel]} onPress={closeDayMenu}>
               <Text style={styles.dayMenuOptionCancelText}>انصراف</Text>
             </TouchableOpacity>
           </View>
@@ -1228,13 +1136,16 @@ const HabitDetailScreen = memo(function HabitDetailScreen({
   );
 });
 
+
 /* ============================================================
-   HOME SCREEN (APPLE INSET GROUPED STYLE WITH LUCIDE ICONS)
+   HOME SCREEN
    ============================================================ */
 
 const HabitCard = memo(function HabitCard({
   habit,
   categories,
+  activeTimers,
+  nowTick,
   onOpenHabit,
   onEditHabit,
   onLongPress,
@@ -1292,112 +1203,94 @@ const HabitCard = memo(function HabitCard({
 
   return (
     <AnimatedPressable
-      style={[styles.habitCard, isCompletedToday && styles.habitCardCompleted]}
-      scaleTo={0.97}
       onPress={reorderMode ? undefined : handlePress}
-      onLongPress={onLongPress}
-      delayLongPress={450}
+      onLongPress={reorderMode ? undefined : onLongPress}
+      style={[
+        styles.habitCard,
+        isCompletedToday && !reorderMode && styles.habitCardCompleted,
+      ]}
     >
       <View style={styles.habitCardTop}>
         <View style={styles.habitTitleWrap}>
-          <Text style={styles.habitTitle} numberOfLines={1}>
-            {habit.title}
-          </Text>
-
+          <Text style={styles.habitTitle}>{habit.title}</Text>
           {!!habit.timerSeconds && habit.timerSeconds > 0 && !reorderMode && (
             <TimerBadge habit={habit} />
           )}
-
           {hasGoal && !reorderMode && (
-            <TouchableOpacity
-              style={styles.goalProgressBadge}
-              activeOpacity={0.6}
-              onPress={handleIncrementGoal}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
+            <View style={styles.goalProgressBadge}>
               <Text style={styles.goalProgressBadgeText}>
                 {toPersianDigits(todayProgress)}
                 <Text style={styles.goalProgressBadgeDivider}> / </Text>
                 {toPersianDigits(habit.goal)}
               </Text>
-            </TouchableOpacity>
+            </View>
           )}
           {isCompletedToday && !reorderMode && (
             <View style={styles.completedBadge}>
-              <Check size={12} color={COLORS.success} strokeWidth={3} />
+              <Check size={12} color={COLORS.success} />
               <Text style={styles.completedBadgeText}>تکمیل شد</Text>
             </View>
           )}
         </View>
         {!reorderMode && (
-          <TouchableOpacity
-            onPress={handleEdit}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={styles.cardEditBtn}
-          >
-            <Edit3 size={15} color={COLORS.subtext} />
+          <TouchableOpacity style={styles.cardEditBtn} onPress={handleEdit}>
+            <Edit3 size={16} color={COLORS.subtext} />
           </TouchableOpacity>
         )}
       </View>
 
       {!!habit.description && !reorderMode && (
-        <Text style={styles.habitDescription} numberOfLines={2}>
-          {habit.description}
-        </Text>
+        <Text style={styles.habitDescription}>{habit.description}</Text>
       )}
 
       {reorderMode ? (
         <View style={styles.reorderRow}>
           <TouchableOpacity
-            style={[styles.reorderBtn, isLast && styles.reorderBtnDisabled]}
-            disabled={isLast}
-            onPress={handleMoveDown}
-            activeOpacity={0.75}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={[styles.reorderBtn, isFirst && styles.reorderBtnDisabled]}
+            onPress={handleMoveUp}
+            disabled={isFirst}
           >
-            <ChevronDown size={20} color={COLORS.primary} />
+            <ChevronUp size={18} color={isFirst ? COLORS.dim : COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.reorderHint}>جابه‌جایی موقعیت</Text>
           <TouchableOpacity
-            style={[styles.reorderBtn, isFirst && styles.reorderBtnDisabled]}
-            disabled={isFirst}
-            onPress={handleMoveUp}
-            activeOpacity={0.75}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={[styles.reorderBtn, isLast && styles.reorderBtnDisabled]}
+            onPress={handleMoveDown}
+            disabled={isLast}
           >
-            <ChevronUp size={20} color={COLORS.primary} />
+            <ChevronDown size={18} color={isLast ? COLORS.dim : COLORS.text} />
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.habitCounterRow}>
-          <AnimatedPressable
+          <TouchableOpacity
             style={[
               styles.habitCounterChip,
-              { backgroundColor: COLORS.successSoft },
               todayStatus === 'success' && styles.habitCounterChipActive,
+              !todayIsScheduled && styles.habitCounterChipDisabled,
             ]}
             onPress={handleSetSuccess}
+            disabled={!todayIsScheduled}
           >
             <Text style={[styles.habitCounterValue, { color: COLORS.success }]}>
               {toPersianDigits(successCount)}
             </Text>
             <Text style={styles.habitCounterLabel}>موفقیت</Text>
-          </AnimatedPressable>
-          <AnimatedPressable
-            disabled={!todayIsScheduled}
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[
               styles.habitCounterChip,
-              { backgroundColor: COLORS.errorSoft },
               todayStatus === 'fail' && styles.habitCounterChipActive,
               !todayIsScheduled && styles.habitCounterChipDisabled,
             ]}
             onPress={handleSetFail}
+            disabled={!todayIsScheduled}
           >
             <Text style={[styles.habitCounterValue, { color: COLORS.error }]}>
               {toPersianDigits(failCount)}
             </Text>
             <Text style={styles.habitCounterLabel}>شکست</Text>
-          </AnimatedPressable>
+          </TouchableOpacity>
         </View>
       )}
     </AnimatedPressable>
@@ -1409,7 +1302,6 @@ const DaySelectorButton = memo(function DaySelectorButton({ dayIndex, label, isS
   return (
     <TouchableOpacity
       style={[styles.daySelectorCircle, isSelected && styles.daySelectorCircleSelected]}
-      activeOpacity={0.7}
       onPress={handlePress}
     >
       <Text style={[styles.daySelectorText, isSelected && styles.daySelectorTextSelected]}>
@@ -1472,78 +1364,46 @@ const CategoryTab = memo(function CategoryTab({
 
   return (
     <AnimatedPressable
-      style={[styles.categoryTab, isActive && styles.categoryTabActive]}
       onPress={categoryReorderMode ? undefined : handlePress}
       onLongPress={categoryReorderMode ? undefined : handleLongPress}
-      delayLongPress={450}
+      style={[
+        styles.categoryTab,
+        isActive && !categoryReorderMode && styles.categoryTabActive,
+        categoryReorderMode && { paddingHorizontal: 12, paddingVertical: 8 },
+      ]}
     >
       {shouldBlink && (
         <Animated.View
-          pointerEvents="none"
-          style={[styles.categoryTabBlinkOverlay, { opacity: blinkOverlayOpacity }]}
+          style={[
+            styles.categoryTabBlinkOverlay,
+            { opacity: blinkOverlayOpacity },
+          ]}
         />
       )}
       {categoryReorderMode ? (
         <View style={styles.categoryTabReorderRow}>
-          <TouchableOpacity
-            style={[styles.catReorderBtn, isFirst && styles.reorderBtnDisabled]}
-            disabled={isFirst}
-            onPress={handleMoveRight}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <ChevronRight size={14} color="#FFFFFF" />
+          <TouchableOpacity style={styles.catReorderBtn} onPress={handleMoveRight} disabled={isFirst}>
+            <ChevronRight size={14} color={isFirst ? COLORS.dim : COLORS.text} />
           </TouchableOpacity>
-
-          <View style={styles.categoryTabContent}>
-            <Text
-              style={[
-                styles.categoryTabText,
-                isActive && styles.categoryTabTextActive,
-                shouldBlink && styles.categoryTabTextBlink,
-              ]}
-            >
-              {category.name}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.catReorderBtn, isLast && styles.reorderBtnDisabled]}
-            disabled={isLast}
-            onPress={handleMoveLeft}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <ChevronLeft size={14} color="#FFFFFF" />
+          <Text style={[styles.categoryTabText, isActive && styles.categoryTabTextActive]}>
+            {category.name}
+          </Text>
+          <TouchableOpacity style={styles.catReorderBtn} onPress={handleMoveLeft} disabled={isLast}>
+            <ChevronLeft size={14} color={isLast ? COLORS.dim : COLORS.text} />
           </TouchableOpacity>
-
           {category.id !== DEFAULT_CATEGORY_ID && (
-            <TouchableOpacity
-              style={styles.catDeleteBtn}
-              onPress={handleDelete}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <X size={12} color={COLORS.error} strokeWidth={3} />
+            <TouchableOpacity style={styles.catDeleteBtn} onPress={handleDelete}>
+              <Trash2 size={12} color={COLORS.error} />
             </TouchableOpacity>
           )}
         </View>
       ) : (
         <View style={styles.categoryTabContent}>
-          <Text
-            style={[
-              styles.categoryTabText,
-              isActive && styles.categoryTabTextActive,
-              shouldBlink && styles.categoryTabTextBlink,
-            ]}
-          >
+          <Text style={[styles.categoryTabText, isActive && styles.categoryTabTextActive]}>
             {category.name}
           </Text>
           {category.days && category.days.length > 0 && category.days.length < 7 && (
-            <Text
-              style={[
-                styles.categoryTabDayHint,
-                isActive && styles.categoryTabDayHintActive,
-                shouldBlink && styles.categoryTabTextBlink,
-              ]}
-            >
+            <Text style={[styles.categoryTabDayHint, isActive && styles.categoryTabDayHintActive]}>
               {category.days.map((d) => WEEKDAYS_FA[d]).join(' ')}
             </Text>
           )}
@@ -1586,18 +1446,18 @@ const CategoryTabs = memo(function CategoryTabs({
   }, [categories, habits, todayKey, todayJy, todayJm, todayJd]);
 
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View>
       <ScrollView
         horizontal
-        style={styles.categoryTabsScroll}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.categoryTabsRow}
+        style={styles.categoryTabsScroll}
       >
         {categories.map((cat, idx) => (
           <CategoryTab
             key={cat.id}
             category={cat}
-            isActive={cat.id === activeCategoryId}
+            isActive={activeCategoryId === cat.id}
             onSelectCategory={onSelectCategory}
             onDeleteCategory={onDeleteCategory}
             shouldBlink={blinkingCategoryIds.has(cat.id)}
@@ -1609,12 +1469,8 @@ const CategoryTabs = memo(function CategoryTabs({
           />
         ))}
         {!categoryReorderMode && (
-          <TouchableOpacity
-            style={[styles.categoryTab, styles.categoryAddTab]}
-            activeOpacity={0.7}
-            onPress={onAddCategory}
-          >
-            <Plus size={18} color={COLORS.primary} strokeWidth={2.5} />
+          <TouchableOpacity style={[styles.categoryTab, styles.categoryAddTab]} onPress={onAddCategory}>
+            <Plus size={20} color={COLORS.subtext} />
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -1622,11 +1478,7 @@ const CategoryTabs = memo(function CategoryTabs({
       {categoryReorderMode && (
         <View style={styles.categoryReorderBanner}>
           <Text style={styles.categoryReorderBannerText}>تغییر چیدمان بخش‌ها</Text>
-          <TouchableOpacity
-            style={styles.categoryReorderDoneBtn}
-            activeOpacity={0.8}
-            onPress={onFinishCategoryReorder}
-          >
+          <TouchableOpacity style={styles.categoryReorderDoneBtn} onPress={onFinishCategoryReorder}>
             <Text style={styles.categoryReorderDoneBtnText}>تایید چیدمان</Text>
           </TouchableOpacity>
         </View>
@@ -1635,9 +1487,12 @@ const CategoryTabs = memo(function CategoryTabs({
   );
 });
 
+
 const HomeScreen = memo(function HomeScreen({
   habits,
   categories,
+  activeTimers,
+  nowTick,
   onOpenHabit,
   onOpenModal,
   onEditHabit,
@@ -1688,23 +1543,28 @@ const HomeScreen = memo(function HomeScreen({
   }, [categoryHabits, categories, todayKey, todayJy, todayJm, todayJd]);
 
   return (
-    <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
-      <View style={styles.homeHeaderRow}>
-        <View style={styles.homeHeader}>
-          <Text style={styles.homeTitle}>عادت‌ها</Text>
-          <Text style={styles.homeSubtitle}>امروز، {toPersianDigits(todayJd)} {MONTHS_FA[todayJm - 1]}</Text>
+    <View style={styles.safe}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView
+        contentContainerStyle={
+          categoryHabits.length === 0 ? styles.emptyScrollContent : styles.homeScrollContent
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.homeHeaderRow}>
+          <View style={styles.homeHeader}>
+            <Text style={styles.homeTitle}>عادت‌ها</Text>
+            <Text style={styles.homeSubtitle}>
+              امروز، {toPersianDigits(todayJd)} {MONTHS_FA[todayJm - 1]}
+            </Text>
+          </View>
+          {!reorderMode && (
+            <TouchableOpacity style={styles.settingsBtn} onPress={onOpenSettings}>
+              <Settings size={20} color={COLORS.subtext} />
+            </TouchableOpacity>
+          )}
         </View>
-        <TouchableOpacity
-          style={styles.settingsBtn}
-          activeOpacity={0.7}
-          onPress={onOpenSettings}
-        >
-          <Settings size={20} color={COLORS.text} />
-        </TouchableOpacity>
-      </View>
 
-      {!reorderMode && (
         <CategoryTabs
           categories={categories}
           activeCategoryId={activeCategoryId}
@@ -1718,45 +1578,41 @@ const HomeScreen = memo(function HomeScreen({
           onMoveCategory={onMoveCategory}
           onFinishCategoryReorder={onFinishCategoryReorder}
         />
-      )}
 
-      {categoryHabits.length > 0 && (
-        <View style={styles.todaySummaryRow}>
-          <View style={styles.todaySummaryBox}>
-            <View style={styles.todaySummaryTopRow}>
-              <View style={styles.todaySummaryDateChip}>
-                <Text style={styles.todaySummaryDateText}>وضعیت روزانه</Text>
+        {categoryHabits.length > 0 && (
+          <View style={styles.todaySummaryRow}>
+            <View style={styles.todaySummaryBox}>
+              <View style={styles.todaySummaryTopRow}>
+                <View style={styles.todaySummaryDateChip}>
+                  <Text style={styles.todaySummaryDateText}>وضعیت روزانه</Text>
+                </View>
+                <Text style={[styles.todaySummaryFraction, { color: COLORS.success }]}>
+                  {toPersianDigits(successToday)} / {toPersianDigits(denominatorForToday)}
+                </Text>
               </View>
-              <Text style={styles.todaySummaryFraction}>
-                <Text style={{ color: COLORS.success }}>{toPersianDigits(successToday)}</Text>
-                <Text style={{ color: COLORS.dim }}> / </Text>
-                <Text style={{ color: COLORS.text }}>{toPersianDigits(denominatorForToday)}</Text>
-              </Text>
+              <View style={styles.summaryProgressTrack}>
+                <View
+                  style={[
+                    styles.summaryProgressFill,
+                    {
+                      width: `${
+                        denominatorForToday > 0
+                          ? Math.min(100, (successToday / denominatorForToday) * 100)
+                          : 0
+                      }%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.todaySummaryLabel}>عادت‌های موفق امروز</Text>
             </View>
-            <View style={styles.summaryProgressTrack}>
-              <View
-                style={[
-                  styles.summaryProgressFill,
-                  { width: `${Math.min(100, (successToday / (denominatorForToday || 1)) * 100)}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.todaySummaryLabel}>عادت‌های موفق امروز</Text>
           </View>
-        </View>
-      )}
+        )}
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={
-          categoryHabits.length === 0 ? styles.emptyScrollContent : styles.homeScrollContent
-        }
-        showsVerticalScrollIndicator={false}
-      >
         {categoryHabits.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyStateIconWrap}>
-              <CalendarIcon size={36} color={COLORS.subtext} />
+              <CalendarIcon size={32} color={COLORS.subtext} />
             </View>
             <Text style={styles.emptyStateText}>بدون عادت در این بخش</Text>
             <Text style={styles.emptyStateSubtext}>
@@ -1769,9 +1625,11 @@ const HomeScreen = memo(function HomeScreen({
               key={h.id}
               habit={h}
               categories={categories}
+              activeTimers={activeTimers}
+              nowTick={nowTick}
               onOpenHabit={onOpenHabit}
               onEditHabit={onEditHabit}
-              onLongPress={reorderMode ? undefined : onEnterReorder}
+              onLongPress={onEnterReorder}
               reorderMode={reorderMode}
               onMoveHabit={onMoveHabit}
               isFirst={idx === 0}
@@ -1780,32 +1638,29 @@ const HomeScreen = memo(function HomeScreen({
               todayKey={todayKey}
               onIncrementGoal={onIncrementGoal}
               onSetStatus={onSetStatus}
-
             />
           ))
         )}
       </ScrollView>
 
       {reorderMode ? (
-        <TouchableOpacity
-          style={[styles.finishReorderBtn, { bottom: insets.bottom + 20 }]}
-          activeOpacity={0.8}
-          onPress={onFinishReorder}
-        >
-          <Text style={styles.finishReorderBtnText}>تایید جابه‌جایی</Text>
-        </TouchableOpacity>
+        <View style={[styles.finishReorderBtn, { bottom: 28 + insets.bottom }]}>
+          <TouchableOpacity onPress={onFinishReorder} style={{ width: '100%', alignItems: 'center' }}>
+            <Text style={styles.finishReorderBtnText}>تایید جابه‌جایی</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <TouchableOpacity
-          style={[styles.fab, { bottom: insets.bottom + 20 }]}
-          activeOpacity={0.8}
+          style={[styles.fab, { bottom: 28 + insets.bottom }]}
           onPress={onOpenModal}
         >
-          <Plus size={28} color="#FFFFFF" strokeWidth={2.5} />
+          <Plus size={28} color="#FFFFFF" />
         </TouchableOpacity>
       )}
     </View>
   );
 });
+
 
 /* ============================================================
    ROOT APP (STATE & CONTROLLERS)
@@ -1827,10 +1682,6 @@ function RootApp() {
   const [categoryReorderMode, setCategoryReorderMode] = useState(false);
   const skipHabitReminderRescheduleRef = useRef(false);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-  // آیا دسته‌بندی‌ها از حافظه‌ی گوشی لود شده‌اند؟ تا قبل از این لحظه، state
-  // فقط دسته‌بندی پیش‌فرض («روزانه») را دارد و هر محاسبه‌ای که به دسته‌بندی
-  // واقعی عادت‌ها نیاز داشته باشد (مثل فیلتر «فقط عادت‌های امروز» در
-  // نوتیفیکیشن‌ها) نباید اجرا شود.
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [activeCategoryId, setActiveCategoryId] = useState(DEFAULT_CATEGORY_ID);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
@@ -1842,13 +1693,9 @@ function RootApp() {
   const [notifDraft, setNotifDraft] = useState(DEFAULT_NOTIF_SETTINGS);
 
   const [activeTimers, setActiveTimers] = useState({});
-
-  // هر بار برنامه به فورگراند می‌آید یکی زیاد می‌شود تا نوتیفیکیشن دائمی با
-  // تاریخِ «امروزِ» جدید از نو محاسبه شود (مثلاً وقتی روز عوض شده باشد).
+  const [nowTick, setNowTick] = useState(Date.now());
   const [appActiveTick, setAppActiveTick] = useState(0);
 
-  // برای دسترسی هم‌گام (بدون stale closure) از داخل listener سراسری نوتیفیکیشن —
-  // همون الگویی که برای activeTimersRef استفاده شد.
   const habitsRef = useRef(habits);
   useEffect(() => {
     habitsRef.current = habits;
@@ -1859,18 +1706,7 @@ function RootApp() {
     categoriesRef.current = categories;
   }, [categories]);
 
-  // شنونده‌ی سراسری برای دکمه‌ی «تایمر عادت رندوم» روی نوتیفیکیشن دائمی.
-  // توجه: این listener فقط تا وقتی برنامه (فوری یا در پس‌زمینه) زنده است کار
-  // می‌کند — اگر برنامه کامل بسته/force-stop شده باشد، اندروید JS را اجرا
-  // نمی‌کند و این دکمه در آن حالت پاسخ نمی‌دهد؛ این محدودیت پلتفرم است.
-  //
-  // رفع مشکل «باز شدن برنامه با زدن دکمه»: با این‌که opensAppToForeground برای
-  // این اکشن false است، بعضی نسخه‌های expo-notifications روی اندروید این گزینه
-  // را نادیده می‌گیرند و برنامه را باز می‌کنند. از سمت جاوااسکریپت نمی‌توان
-  // جلوی خودِ باز شدن را گرفت، ولی می‌توان بلافاصله جبرانش کرد: اول تایمر و
-  // نوتیف تضمینی‌اش را زمان‌بندی می‌کنیم، بعد اگر برنامه در فورگراند بود، با
-  // BackHandler.exitApp() فوراً به پس‌زمینه برش می‌گردانیم — نتیجه این‌که
-  // برنامه باز نمی‌ماند (حداکثر یک لحظه‌ی کوتاه دیده می‌شود و بسته می‌شود).
+  // Global notification listener for random timer button
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {
       if (response.actionIdentifier !== RANDOM_TIMER_ACTION_ID) return;
@@ -1880,9 +1716,6 @@ function RootApp() {
         console.warn('Failed to start random habit timer', e);
       }
       if (Platform.OS === 'android') {
-        // کمی صبر می‌کنیم تا وضعیت AppState (اگر اندروید در حال باز کردن
-        // برنامه است) به‌روز شود؛ بعد فقط اگر برنامه واقعاً روی صفحه آمده
-        // بود، آن را به پس‌زمینه می‌فرستیم.
         setTimeout(() => {
           if (AppState.currentState === 'active') {
             BackHandler.exitApp();
@@ -1893,19 +1726,13 @@ function RootApp() {
     return () => sub.remove();
   }, []);
 
-  // نمایش/آپدیت نوتیفیکیشن دائمی هرگاه لیست عادت‌ها یا دسته‌بندی‌ها تغییر کند
-  // (مستقل از روشن/خاموش بودن یادآور زمان‌بندی‌شده در تنظیمات).
-  // مهم (رفع باگ): باید تا لود کامل دسته‌بندی‌ها از حافظه صبر کنیم؛ وگرنه این
-  // نوتیف یک بار با لیست پیش‌فرض دسته‌بندی‌ها ساخته می‌شود و چون دسته‌بندیِ
-  // عادت‌ها هنوز «ناشناخته» است، فیلترِ «فقط عادت‌های امروز» رد می‌شود و
-  // همه‌ی عادت‌های برنامه (حتی بخش‌های مخصوص روزهای دیگر) داخل نوتیف می‌آیند.
-  // appActiveTick هم تضمین می‌کند هر بار برنامه باز شود، محتوای نوتیف با
-  // تاریخ امروز از نو حساب شود — دقیقاً مثل یادآور زمان‌بندی‌شده.
+  // Persistent reminder
   useEffect(() => {
     if (!loaded || !categoriesLoaded) return;
     presentPersistentReminder(habits, categories);
   }, [habits, categories, loaded, categoriesLoaded, appActiveTick]);
 
+  // Timer tick interval
   useEffect(() => {
     const timerKeys = Object.keys(activeTimers);
     if (timerKeys.length === 0) return;
@@ -1938,14 +1765,9 @@ function RootApp() {
   const toggleTimer = useCallback(async (habit) => {
     if (!habit.timerSeconds || habit.timerSeconds <= 0) return;
 
-    // تصمیم فعال/غیرفعال بودن را هم‌گام (synchronous) و مستقیماً از روی
-    // activeTimersRef می‌گیریم، نه از داخل callback ناهمگام setState —
-    // چون آن callback همیشه بلافاصله اجرا نمی‌شود و باعث می‌شد گاهی
-    // این تصمیم اشتباه (همیشه "غیرفعال") خوانده شود.
     const current = activeTimersRef.current[habit.id];
 
     if (current) {
-      // در حال اجراست → لغو کن
       const next = { ...activeTimersRef.current };
       delete next[habit.id];
       activeTimersRef.current = next;
@@ -1977,8 +1799,6 @@ function RootApp() {
       console.warn('Failed to schedule timer notification', e);
     }
 
-    // اگر بین این لحظه و بالا کاربر دوباره کلیک زده و تایمر را خاموش کرده،
-    // آن انتخاب را محترم می‌شماریم (و نوتیف تازه‌زمان‌بندی‌شده را کنسل می‌کنیم).
     if (activeTimersRef.current[habit.id]) {
       if (notifId) {
         await Notifications.cancelScheduledNotificationAsync(notifId).catch(() => {});
@@ -1993,6 +1813,7 @@ function RootApp() {
     setNowTick(Date.now());
   }, []);
 
+  // Load data
   useEffect(() => {
     (async () => {
       try {
@@ -2052,6 +1873,7 @@ function RootApp() {
     })();
   }, []);
 
+  // App state listener
   useEffect(() => {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (nextState !== 'active') return;
@@ -2070,6 +1892,7 @@ function RootApp() {
     return () => sub.remove();
   }, [categories]);
 
+  // Schedule reminders
   useEffect(() => {
     if (!loaded || !notifLoaded || !categoriesLoaded) return;
     if (skipHabitReminderRescheduleRef.current) {
@@ -2371,8 +2194,13 @@ function RootApp() {
     [habits, persist]
   );
 
+  // FIXED: moveHabit with LayoutAnimation for smooth reorder
   const moveHabit = useCallback((habitId, direction) => {
     skipHabitReminderRescheduleRef.current = true;
+
+    // Configure layout animation for smooth transition
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
     setHabits((currentHabits) => {
       const idx = currentHabits.findIndex((h) => h.id === habitId);
       if (idx < 0) return currentHabits;
@@ -2381,9 +2209,12 @@ function RootApp() {
       const next = [...currentHabits];
       const [item] = next.splice(idx, 1);
       next.splice(newIdx, 0, item);
+
+      // Save to storage in background without blocking UI
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch((e) =>
         console.warn('Failed to save habits', e)
       );
+
       return next;
     });
   }, []);
@@ -2423,234 +2254,189 @@ function RootApp() {
 
   if (!loaded) {
     return (
-      <View style={[styles.safe, styles.loadingWrap, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
+      <View style={[styles.safe, styles.loadingWrap]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   return (
-    <TimerContext.Provider value={{ activeTimers, onToggleTimer: toggleTimer }}>
-    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <HomeScreen
-        habits={habits}
-        categories={categories}
-        onOpenHabit={openHabit}
-        onOpenModal={openCreateModal}
-        onEditHabit={openEditModal}
-        reorderMode={reorderMode}
-        onEnterReorder={enterReorderMode}
-        onFinishReorder={finishReorderMode}
-        onMoveHabit={moveHabit}
-        categoryReorderMode={categoryReorderMode}
-        onEnterCategoryReorder={enterCategoryReorderMode}
-        onFinishCategoryReorder={finishCategoryReorderMode}
-        onMoveCategory={moveCategory}
-        onOpenSettings={openNotifSettings}
-        onIncrementGoal={incrementGoal}
-        activeCategoryId={activeCategoryId}
-        onSelectCategory={selectCategory}
-        onAddCategory={openAddCategoryModal}
-        onDeleteCategory={deleteCategory}
-        onSetStatus={setStatus}
+    <TimerContext.Provider value={{ activeTimers, nowTick, onToggleTimer: toggleTimer }}>
+      <View style={styles.safe}>
+        {screen === 'home' && (
+          <HomeScreen
+            habits={habits}
+            categories={categories}
+            activeTimers={activeTimers}
+            nowTick={nowTick}
+            onOpenHabit={openHabit}
+            onOpenModal={openCreateModal}
+            onEditHabit={openEditModal}
+            reorderMode={reorderMode}
+            onEnterReorder={enterReorderMode}
+            onFinishReorder={finishReorderMode}
+            onMoveHabit={moveHabit}
+            categoryReorderMode={categoryReorderMode}
+            onEnterCategoryReorder={enterCategoryReorderMode}
+            onFinishCategoryReorder={finishCategoryReorderMode}
+            onMoveCategory={moveCategory}
+            onOpenSettings={openNotifSettings}
+            activeCategoryId={activeCategoryId}
+            onSelectCategory={selectCategory}
+            onAddCategory={openAddCategoryModal}
+            onDeleteCategory={deleteCategory}
+            onIncrementGoal={incrementGoal}
+            onSetStatus={setStatus}
+          />
+        )}
 
-      />
-
-      {screen === 'detail' && selectedHabit && (
-        <View style={styles.detailOverlay}>
+        {screen === 'detail' && selectedHabit && (
           <HabitDetailScreen
             habit={selectedHabit}
             categories={categories}
+            activeTimers={activeTimers}
+            nowTick={nowTick}
             onBack={goBackHome}
             onDelete={deleteHabit}
             onSetStatus={setStatus}
             onClearStatus={clearStatus}
             onBumpProgress={bumpProgress}
             onEdit={handleEditSelected}
-
           />
-        </View>
-      )}
+        )}
 
-      {/* iOS Style Bottom Sheet Modal for Habit Creation */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={closeCreateModal}
-      >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { paddingBottom: insets.bottom + 20 }]}>
+        {/* iOS Style Bottom Sheet Modal for Habit Creation */}
+        <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={closeCreateModal}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalCard}>
               <View style={styles.modalHandle} />
               <Text style={styles.modalTitle}>
                 {editingHabitId ? 'ویرایش عادت' : 'عادت جدید'}
               </Text>
-
               <Text style={styles.inputLabel}>عنوان</Text>
               <TextInput
                 style={styles.input}
-                placeholder="مثلاً: مطالعه کتاب"
-                placeholderTextColor={COLORS.dim}
                 value={titleInput}
                 onChangeText={setTitleInput}
+                placeholder="مثلاً ورزش صبحگاهی"
+                placeholderTextColor={COLORS.dim}
                 textAlign="right"
               />
-
               <Text style={styles.inputLabel}>توضیحات (اختیاری)</Text>
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
-                placeholder="توضیح کوتاه یا یادداشت..."
-                placeholderTextColor={COLORS.dim}
                 value={descInput}
                 onChangeText={setDescInput}
+                placeholder="توضیحات بیشتر..."
+                placeholderTextColor={COLORS.dim}
                 textAlign="right"
                 multiline
-                numberOfLines={3}
               />
-
               <Text style={styles.inputLabel}>تایمر معکوس (ثانیه - اختیاری)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="مثلاً: ۱۲۰"
-                placeholderTextColor={COLORS.dim}
                 value={timerInput}
                 onChangeText={handleTimerInputChange}
+                placeholder="مثلاً 300"
+                placeholderTextColor={COLORS.dim}
+                keyboardType="numeric"
                 textAlign="right"
-                keyboardType="number-pad"
               />
-
               <Text style={styles.inputLabel}>هدف روزانه (تعداد دفعات)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="مثلاً: ۳"
-                placeholderTextColor={COLORS.dim}
                 value={goalInput}
                 onChangeText={handleGoalInputChange}
+                placeholder="مثلاً 3"
+                placeholderTextColor={COLORS.dim}
+                keyboardType="numeric"
                 textAlign="right"
-                keyboardType="number-pad"
               />
-
               <View style={styles.modalButtonsRow}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonCancel]}
-                  activeOpacity={0.7}
-                  onPress={closeCreateModal}
-                >
+                <TouchableOpacity style={[styles.modalButton, styles.modalButtonCancel]} onPress={closeCreateModal}>
                   <Text style={styles.modalButtonCancelText}>انصراف</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonCreate]}
-                  activeOpacity={0.7}
-                  onPress={handleSubmitHabit}
-                >
+                <TouchableOpacity style={[styles.modalButton, styles.modalButtonCreate]} onPress={handleSubmitHabit}>
                   <Text style={styles.modalButtonCreateText}>
                     {editingHabitId ? 'ذخیره' : 'ایجاد'}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+          </KeyboardAvoidingView>
+        </Modal>
 
-      {/* iOS Style Bottom Sheet Modal for Notification Settings */}
-      <Modal
-        visible={notifModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={closeNotifSettings}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { paddingBottom: insets.bottom + 20 }]}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>تنظیمات یادآور</Text>
-
-            <View style={styles.notifSwitchRow}>
-              <Switch
-                value={notifDraft.enabled}
-                onValueChange={handleNotifEnabledChange}
-                trackColor={{ false: COLORS.cardSurface, true: COLORS.primary }}
-                thumbColor="#FFFFFF"
-              />
-              <Text style={styles.notifSwitchLabel}>یادآور روزانه فعال باشد</Text>
-            </View>
-
-            {notifDraft.enabled && (
-              <View style={styles.notifTimeCard}>
-                <Text style={styles.notifTimeLabel}>فاصله زمانی یادآوری (دقیقه)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="۳۰"
-                  placeholderTextColor={COLORS.dim}
-                  value={String(notifDraft.intervalMinutes)}
-                  onChangeText={setDraftInterval}
-                  textAlign="center"
-                  keyboardType="number-pad"
+        {/* iOS Style Bottom Sheet Modal for Notification Settings */}
+        <Modal visible={notifModalVisible} transparent animationType="slide" onRequestClose={closeNotifSettings}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalCard}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>تنظیمات یادآوری</Text>
+              <View style={styles.notifSwitchRow}>
+                <Text style={styles.notifSwitchLabel}>یادآور روزانه فعال باشد</Text>
+                <Switch
+                  value={notifDraft.enabled}
+                  onValueChange={handleNotifEnabledChange}
+                  trackColor={{ false: COLORS.cardSurface, true: COLORS.primary }}
+                  thumbColor="#FFFFFF"
                 />
-                <Text style={styles.notifTimeHint}>
-                  ارسال یادآور هر {toPersianDigits(notifDraft.intervalMinutes || '')} دقیقه یک‌بار تا زمان تکمیل کامل عادت‌ها
-                </Text>
-                <TouchableOpacity
-                  style={styles.notifTestBtn}
-                  activeOpacity={0.7}
-                  onPress={handleTestNotification}
-                >
-                  <Text style={styles.notifTestBtnText}>ارسال نوتیفیکیشن تست</Text>
+              </View>
+              {notifDraft.enabled && (
+                <View style={styles.notifTimeCard}>
+                  <Text style={styles.notifTimeLabel}>فاصله زمانی یادآوری (دقیقه)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={String(notifDraft.intervalMinutes || '')}
+                    onChangeText={setDraftInterval}
+                    placeholder="30"
+                    placeholderTextColor={COLORS.dim}
+                    keyboardType="numeric"
+                    textAlign="right"
+                  />
+                  <Text style={styles.notifTimeHint}>
+                    ارسال یادآور هر {toPersianDigits(notifDraft.intervalMinutes || '')} دقیقه یک‌بار تا زمان تکمیل کامل عادت‌ها
+                  </Text>
+                  <TouchableOpacity style={styles.notifTestBtn} onPress={handleTestNotification}>
+                    <Text style={styles.notifTestBtnText}>ارسال نوتیفیکیشن تست</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity style={[styles.modalButton, styles.modalButtonCancel]} onPress={closeNotifSettings}>
+                  <Text style={styles.modalButtonCancelText}>انصراف</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalButton, styles.modalButtonCreate]} onPress={saveNotifSettings}>
+                  <Text style={styles.modalButtonCreateText}>ذخیره</Text>
                 </TouchableOpacity>
               </View>
-            )}
-
-            <View style={styles.modalButtonsRow}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                activeOpacity={0.7}
-                onPress={closeNotifSettings}
-              >
-                <Text style={styles.modalButtonCancelText}>انصراف</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCreate]}
-                activeOpacity={0.7}
-                onPress={saveNotifSettings}
-              >
-                <Text style={styles.modalButtonCreateText}>ذخیره</Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
+          </KeyboardAvoidingView>
+        </Modal>
 
-      {/* iOS Style Bottom Sheet Modal for Category Creation */}
-      <Modal
-        visible={categoryModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={closeAddCategoryModal}
-      >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { paddingBottom: insets.bottom + 20 }]}>
+        {/* iOS Style Bottom Sheet Modal for Category Creation */}
+        <Modal visible={categoryModalVisible} transparent animationType="slide" onRequestClose={closeAddCategoryModal}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalCard}>
               <View style={styles.modalHandle} />
               <Text style={styles.modalTitle}>بخش جدید</Text>
-
               <Text style={styles.inputLabel}>نام بخش</Text>
               <TextInput
                 style={styles.input}
-                placeholder="مثلاً: آخر هفته"
-                placeholderTextColor={COLORS.subtext}
                 value={categoryNameInput}
                 onChangeText={setCategoryNameInput}
+                placeholder="مثلاً ورزش"
+                placeholderTextColor={COLORS.dim}
                 textAlign="right"
               />
-
               <Text style={styles.inputLabel}>روزهای فعال (عدم انتخاب = همه روزها)</Text>
               <View style={styles.daySelectorRow}>
                 {WEEKDAYS_FA.map((shortName, idx) => (
@@ -2663,28 +2449,19 @@ function RootApp() {
                   />
                 ))}
               </View>
-
               <View style={styles.modalButtonsRow}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonCancel]}
-                  activeOpacity={0.7}
-                  onPress={closeAddCategoryModal}
-                >
+                <TouchableOpacity style={[styles.modalButton, styles.modalButtonCancel]} onPress={closeAddCategoryModal}>
                   <Text style={styles.modalButtonCancelText}>انصراف</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonCreate]}
-                  activeOpacity={0.7}
-                  onPress={submitNewCategory}
-                >
+                <TouchableOpacity style={[styles.modalButton, styles.modalButtonCreate]} onPress={submitNewCategory}>
                   <Text style={styles.modalButtonCreateText}>ایجاد</Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      </View>
+    </TimerContext.Provider>
   );
 }
 
@@ -2695,6 +2472,7 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
 
 /* ============================================================
    STYLING SYSTEM (APPLE HIG STANDARD)
@@ -3824,3 +3602,4 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+
