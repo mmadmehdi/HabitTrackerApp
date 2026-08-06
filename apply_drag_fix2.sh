@@ -1,3 +1,14 @@
+#!/bin/bash
+set -e
+
+# این اسکریپت فایل App.js پروژه را با نسخه‌ی جدید (رفع باگ عدم حرکت کارت‌ها هنگام کشیدن) جایگزین می‌کند
+# و سپس تغییرات را روی گیت‌هاب push می‌کند.
+# این اسکریپت را داخل پوشه‌ی اصلی پروژه اجرا کن:
+#   bash apply_drag_fix2.sh
+
+echo "در حال نوشتن نسخه‌ی جدید App.js ..."
+
+cat > App.js << 'EOF_HABITTRACKER_APPJS'
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
@@ -4047,3 +4058,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+EOF_HABITTRACKER_APPJS
+
+echo "فایل App.js با موفقیت جایگزین شد."
+
+git add .
+git commit -m "fix: ScrollView دیگه responder را وسط کشیدن از drag handle نمی‌قاپد (onPanResponderTerminationRequest + غیرفعال‌سازی اسکرول حین درگ)"
+git push -u origin main
+
+echo "تغییرات با موفقیت روی گیت‌هاب push شد."
