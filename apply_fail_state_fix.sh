@@ -1,3 +1,16 @@
+#!/bin/bash
+set -e
+
+# این اسکریپت فایل App.js پروژه را با نسخه‌ی جدید جایگزین می‌کند:
+#  - دکمه/کارت شکست هم مثل موفقیت پر-رنگ (قرمز/سبز کامل) می‌شه
+#  - عادت شکست‌خورده دیگه توی نوتیف دائمی، یادآور، و تایمر رندوم حساب نمی‌شه
+# سپس تغییرات را روی گیت‌هاب push می‌کند.
+# این اسکریپت را داخل پوشه‌ی اصلی پروژه اجرا کن:
+#   bash apply_fail_state_fix.sh
+
+echo "در حال نوشتن نسخه‌ی جدید App.js ..."
+
+cat > App.js << 'EOF_HABITTRACKER_APPJS'
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
@@ -4102,3 +4115,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+EOF_HABITTRACKER_APPJS
+
+echo "فایل App.js با موفقیت جایگزین شد."
+
+git add .
+git commit -m "feat: چیپ/کارت شکست هم مثل موفقیت رنگ کامل می‌گیره + عادت شکست‌خورده از نوتیف دائمی/یادآور/تایمر رندوم حذف می‌شه"
+git push -u origin main
+
+echo "تغییرات با موفقیت روی گیت‌هاب push شد."
