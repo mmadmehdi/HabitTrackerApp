@@ -1,3 +1,41 @@
+#!/bin/bash
+set -e
+
+PROJECT_DIR="$(pwd)"
+
+JALALI_DATE=$(node -e "
+function div(a,b){return Math.floor(a/b);}
+function gregorianToJalali(gy, gm, gd) {
+  var g_d_m = [0,31,59,90,120,151,181,212,243,273,304,334];
+  var jy = (gy <= 1600) ? 0 : 979;
+  gy -= (gy <= 1600) ? 621 : 1600;
+  var gy2 = (gm > 2) ? (gy + 1) : gy;
+  var days = (365*gy) + (div((gy2+3),4)) - (div((gy2+99),100)) + (div((gy2+399),400)) - 80 + gd + g_d_m[gm-1];
+  jy += 33*(div(days,12053));
+  days %= 12053;
+  jy += 4*(div(days,1461));
+  days %= 1461;
+  if (days > 365) { jy += div((days-1),365); days = (days-1)%365; }
+  var jm = (days < 186) ? 1+div(days,31) : 7+div((days-186),30);
+  var jd = 1 + ((days < 186) ? (days%31) : ((days-186)%30));
+  return [jy, jm, jd];
+}
+var now = new Date();
+var r = gregorianToJalali(now.getFullYear(), now.getMonth()+1, now.getDate());
+function p(n){ return n<10 ? '0'+n : ''+n; }
+console.log(r[0] + '-' + p(r[1]) + '-' + p(r[2]));
+")
+
+BACKUP_DIR="$HOME/storage/shared/Download/Yaadavar/backup/$JALALI_DATE"
+mkdir -p "$BACKUP_DIR"
+
+if ! command -v zip >/dev/null 2>&1; then
+  pkg install -y zip >/dev/null 2>&1 || true
+fi
+
+( cd "$PROJECT_DIR" && zip -r -q "$BACKUP_DIR/backup.zip" . -x "node_modules/*" -x ".git/*" -x "*.zip" )
+
+cat > App.js << 'EOF_HABITTRACKER_APPJS'
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
@@ -4748,3 +4786,31 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+EOF_HABITTRACKER_APPJS
+
+node -e "
+const fs = require('fs');
+let ids = [];
+if (fs.existsSync('allowed_devices.txt')) {
+  ids = fs.readFileSync('allowed_devices.txt', 'utf8')
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#'));
+} else {
+  fs.writeFileSync(
+    'allowed_devices.txt',
+    '# یک Android ID در هر خط بنویس (بدون # ابتدای خط)\n# مثال:\n# a1b2c3d4e5f6a7b8\n'
+  );
+}
+let app = fs.readFileSync('App.js', 'utf8');
+const arrLiteral = JSON.stringify(ids);
+app = app.replace(/const ALLOWED_DEVICE_IDS = \[\];/, 'const ALLOWED_DEVICE_IDS = ' + arrLiteral + ';');
+fs.writeFileSync('App.js', app);
+console.log('Injected ' + ids.length + ' device id(s) into App.js');
+"
+
+npx expo install expo-application
+
+git add .
+git commit -m "feat: قفل نصب بر اساس Android ID مجاز (allowed_devices.txt) + صفحه قفل با آیدی تلگرام"
+git push -u origin main
