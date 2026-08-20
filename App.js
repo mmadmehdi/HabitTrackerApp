@@ -57,7 +57,7 @@ import {
 
 // DEVICE_LOCK_PLACEHOLDER — این خط را دستی ویرایش نکن؛ هر بار apply_*.sh
 // اجرا می‌شود، محتوای allowed_devices.txt در همین‌جا جایگزین می‌شود.
-const ALLOWED_DEVICE_IDS = [];
+const ALLOWED_DEVICE_IDS = ["8184d2c29f160340 #me","5d93328f3e22b371 #baba","55ad5b6eb41c188b #maman"];
 
 const LICENSE_CONTACT_TELEGRAM = '@ImDivand';
 
