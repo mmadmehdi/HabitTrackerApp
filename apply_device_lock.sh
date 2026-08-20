@@ -97,7 +97,7 @@ import {
 // اجرا می‌شود، محتوای allowed_devices.txt در همین‌جا جایگزین می‌شود.
 const ALLOWED_DEVICE_IDS = [];
 
-const LICENSE_CONTACT_TELEGRAM = '@ImDivand';
+const LICENSE_CONTACT_TELEGRAM = '@ImDivane';
 
 const STORAGE_KEY = '@habit_tracker_data_v2';
 const NOTIF_SETTINGS_KEY = '@habit_tracker_notif_settings_v1';
