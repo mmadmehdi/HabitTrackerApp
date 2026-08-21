@@ -64,9 +64,9 @@ const LICENSE_CONTACT_TELEGRAM = '@ImDivand';
 const STORAGE_KEY = '@habit_tracker_data_v2';
 const NOTIF_SETTINGS_KEY = '@habit_tracker_notif_settings_v1';
 const NOTIF_CHANNEL_ID = 'habit_urgent_channel';
+const NOTIF_REMINDER_ID = 'habit_reminder_repeating';
 const TIMER_CHANNEL_ID = 'habit_timer_channel';
 const PERSISTENT_CHANNEL_ID = 'habit_persistent_channel';
-const NOTIF_BATCH_SIZE = 200;
 
 const PERSISTENT_NOTIF_ID = 'habit_persistent_reminder';
 const RANDOM_TIMER_CATEGORY_ID = 'habit_persistent_actions';
@@ -450,7 +450,7 @@ function buildReminderBody(incomplete) {
 
 async function scheduleHabitReminder(habits, categories, settings) {
   try {
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    await Notifications.cancelScheduledNotificationAsync(NOTIF_REMINDER_ID);
   } catch (e) {}
 
   if (!settings || !settings.enabled) return;
@@ -464,21 +464,20 @@ async function scheduleHabitReminder(habits, categories, settings) {
   const seconds = Math.max(60, Math.round((settings.intervalMinutes || 30) * 60));
 
   try {
-    for (let i = 1; i <= NOTIF_BATCH_SIZE; i += 1) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '⏰ یادآور عادت‌ها',
-          body,
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          data: { kind: 'reminder' },
-          android: { channelId: NOTIF_CHANNEL_ID },
-        },
-        trigger: { type: 'timeInterval', seconds: seconds * i, repeats: false },
-      });
-    }
+    await Notifications.scheduleNotificationAsync({
+      identifier: NOTIF_REMINDER_ID,
+      content: {
+        title: '⏰ یادآور عادت‌ها',
+        body,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        data: { kind: 'reminder' },
+        android: { channelId: NOTIF_CHANNEL_ID },
+      },
+      trigger: { type: 'timeInterval', seconds, repeats: true },
+    });
   } catch (e) {
-    console.warn('Failed to schedule habit reminders', e);
+    console.warn('Failed to schedule habit reminder', e);
   }
 }
 
