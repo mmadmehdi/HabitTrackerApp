@@ -59,7 +59,7 @@ import {
 // اجرا می‌شود، محتوای allowed_devices.txt در همین‌جا جایگزین می‌شود.
 const ALLOWED_DEVICE_IDS = ["8184d2c29f160340","5d93328f3e22b371","55ad5b6eb41c188b"];
 
-const LICENSE_CONTACT_TELEGRAM = '@ImDivane';
+const LICENSE_CONTACT_TELEGRAM = '@ImDivand';
 
 const STORAGE_KEY = '@habit_tracker_data_v2';
 const NOTIF_SETTINGS_KEY = '@habit_tracker_notif_settings_v1';
@@ -471,6 +471,7 @@ async function scheduleHabitReminder(habits, categories, settings) {
           body,
           sound: true,
           priority: Notifications.AndroidNotificationPriority.MAX,
+          data: { kind: 'reminder' },
           android: { channelId: NOTIF_CHANNEL_ID },
         },
         trigger: { type: 'timeInterval', seconds: seconds * i, repeats: false },
@@ -1598,6 +1599,7 @@ const CategoryTab = memo(function CategoryTab({
   isActive,
   onSelectCategory,
   onDeleteCategory,
+  onEditCategory,
   shouldBlink,
   categoryReorderMode,
   onLongPressCategory,
@@ -1610,6 +1612,7 @@ const CategoryTab = memo(function CategoryTab({
   const handleMoveRight = useCallback(() => onMoveCategory(category.id, -1), [onMoveCategory, category.id]);
   const handleMoveLeft = useCallback(() => onMoveCategory(category.id, 1), [onMoveCategory, category.id]);
   const handleDelete = useCallback(() => onDeleteCategory(category.id), [onDeleteCategory, category.id]);
+  const handleEdit = useCallback(() => onEditCategory(category), [onEditCategory, category]);
 
   const blinkAnim = useRef(new Animated.Value(0)).current;
 
@@ -1689,6 +1692,14 @@ const CategoryTab = memo(function CategoryTab({
             <ChevronLeft size={14} color="#FFFFFF" />
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.catEditBtn}
+            onPress={handleEdit}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Edit3 size={12} color={COLORS.primary} strokeWidth={3} />
+          </TouchableOpacity>
+
           {category.id !== DEFAULT_CATEGORY_ID && (
             <TouchableOpacity
               style={styles.catDeleteBtn}
@@ -1733,6 +1744,7 @@ const CategoryTabs = memo(function CategoryTabs({
   onSelectCategory,
   onAddCategory,
   onDeleteCategory,
+  onEditCategory,
   habits,
   todayKey,
   categoryReorderMode,
@@ -1774,6 +1786,7 @@ const CategoryTabs = memo(function CategoryTabs({
             isActive={cat.id === activeCategoryId}
             onSelectCategory={onSelectCategory}
             onDeleteCategory={onDeleteCategory}
+            onEditCategory={onEditCategory}
             shouldBlink={blinkingCategoryIds.has(cat.id)}
             categoryReorderMode={categoryReorderMode}
             onLongPressCategory={onLongPressCategory}
@@ -1828,6 +1841,7 @@ const HomeScreen = memo(function HomeScreen({
   onSelectCategory,
   onAddCategory,
   onDeleteCategory,
+  onEditCategory,
   onIncrementGoal,
   onSetStatus,
   activeTimers,
@@ -1855,24 +1869,29 @@ const HomeScreen = memo(function HomeScreen({
     [onReorderCategoryHabits, activeCategoryId]
   );
 
-  const { successToday, denominatorForToday } = useMemo(() => {
-    const success = categoryHabits.filter((h) => {
-      const history = h.history || {};
-      if (history[todayKey] !== 'success') return false;
+  const { successToday, denominatorForToday, allHandledToday } = useMemo(() => {
+    const scheduledTodayHabits = categoryHabits.filter((h) => {
       const catId = h.categoryId || DEFAULT_CATEGORY_ID;
       const cat = categories.find((c) => c.id === catId);
       return isCategoryActiveOn(cat, todayJy, todayJm, todayJd);
-    }).length;
+    });
 
-    const scheduledToday = categoryHabits.filter((h) => {
-      const catId = h.categoryId || DEFAULT_CATEGORY_ID;
-      const cat = categories.find((c) => c.id === catId);
-      return isCategoryActiveOn(cat, todayJy, todayJm, todayJd);
-    }).length;
+    const success = scheduledTodayHabits.filter(
+      (h) => (h.history || {})[todayKey] === 'success'
+    ).length;
+    const failed = scheduledTodayHabits.filter(
+      (h) => (h.history || {})[todayKey] === 'fail'
+    ).length;
+
+    // عادت‌هایی که شکست خورده‌اند دیگر جزو «باقی‌مانده» حساب نمی‌شوند —
+    // مثلاً از ۱/۱۰ با یک شکست جدید به ۱/۹ می‌رسیم.
+    const denominator = scheduledTodayHabits.length - failed;
+    const scheduledCount = scheduledTodayHabits.length;
 
     return {
       successToday: success,
-      denominatorForToday: scheduledToday > 0 ? scheduledToday : categoryHabits.length,
+      denominatorForToday: denominator > 0 ? denominator : 0,
+      allHandledToday: scheduledCount > 0 && success + failed >= scheduledCount,
     };
   }, [categoryHabits, categories, todayKey, todayJy, todayJm, todayJd]);
 
@@ -1900,6 +1919,7 @@ const HomeScreen = memo(function HomeScreen({
           onSelectCategory={onSelectCategory}
           onAddCategory={onAddCategory}
           onDeleteCategory={onDeleteCategory}
+          onEditCategory={onEditCategory}
           habits={habits}
           todayKey={todayKey}
           categoryReorderMode={categoryReorderMode}
@@ -1912,25 +1932,31 @@ const HomeScreen = memo(function HomeScreen({
       {categoryHabits.length > 0 && (
         <View style={styles.todaySummaryRow}>
           <View style={styles.todaySummaryBox}>
-            <View style={styles.todaySummaryTopRow}>
-              <View style={styles.todaySummaryDateChip}>
-                <Text style={styles.todaySummaryDateText}>وضعیت روزانه</Text>
-              </View>
-              <Text style={styles.todaySummaryFraction}>
-                <Text style={{ color: COLORS.success }}>{toPersianDigits(successToday)}</Text>
-                <Text style={{ color: COLORS.dim }}> / </Text>
-                <Text style={{ color: COLORS.text }}>{toPersianDigits(denominatorForToday)}</Text>
-              </Text>
-            </View>
-            <View style={styles.summaryProgressTrack}>
-              <View
-                style={[
-                  styles.summaryProgressFill,
-                  { width: `${Math.min(100, (successToday / (denominatorForToday || 1)) * 100)}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.todaySummaryLabel}>عادت‌های موفق امروز</Text>
+            {allHandledToday ? (
+              <Text style={styles.todaySummaryDoneText}>تمام عادت‌ها انجام شدند</Text>
+            ) : (
+              <>
+                <View style={styles.todaySummaryTopRow}>
+                  <View style={styles.todaySummaryDateChip}>
+                    <Text style={styles.todaySummaryDateText}>وضعیت روزانه</Text>
+                  </View>
+                  <Text style={styles.todaySummaryFraction}>
+                    <Text style={{ color: COLORS.success }}>{toPersianDigits(successToday)}</Text>
+                    <Text style={{ color: COLORS.dim }}> / </Text>
+                    <Text style={{ color: COLORS.text }}>{toPersianDigits(denominatorForToday)}</Text>
+                  </Text>
+                </View>
+                <View style={styles.summaryProgressTrack}>
+                  <View
+                    style={[
+                      styles.summaryProgressFill,
+                      { width: `${Math.min(100, (successToday / (denominatorForToday || 1)) * 100)}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.todaySummaryLabel}>عادت‌های موفق امروز</Text>
+              </>
+            )}
           </View>
         </View>
       )}
@@ -2042,6 +2068,7 @@ function RootApp() {
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [categoryNameInput, setCategoryNameInput] = useState('');
   const [categoryDaySelections, setCategoryDaySelections] = useState([]);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [notifSettings, setNotifSettings] = useState(DEFAULT_NOTIF_SETTINGS);
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifModalVisible, setNotifModalVisible] = useState(false);
@@ -2129,6 +2156,31 @@ function RootApp() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // هر بار یک نوتیف یادآور جدید واقعاً نمایش داده می‌شود، نسخه‌های قبلی‌اش را
+  // از نوار اعلان‌ها پاک می‌کنیم — چون قبلاً هر ۲۰۰ نوتیف زمان‌بندی‌شده
+  // identifier جدا داشتند و روی هم تلنبار می‌شدند؛ همین تلنبارشدن باعث
+  // می‌شد اندروید با فاصله‌های طولانی‌تر (مثل ۱۵ دقیقه) دیگر آن‌ها را
+  // فوری/urgent نشان ندهد.
+  useEffect(() => {
+    const sub = Notifications.addNotificationReceivedListener(async (notification) => {
+      if (notification.request.content.data?.kind !== 'reminder') return;
+      try {
+        const presented = await Notifications.getPresentedNotificationsAsync();
+        const stale = presented.filter(
+          (n) =>
+            n.request.content.data?.kind === 'reminder' &&
+            n.request.identifier !== notification.request.identifier
+        );
+        await Promise.all(
+          stale.map((n) => Notifications.dismissNotificationAsync(n.request.identifier))
+        );
+      } catch (e) {
+        console.warn('Failed to clear previous reminder notifications', e);
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   // نمایش/آپدیت نوتیفیکیشن دائمی هرگاه لیست عادت‌ها یا دسته‌بندی‌ها تغییر کند
@@ -2336,8 +2388,16 @@ function RootApp() {
   }, []);
 
   const openAddCategoryModal = useCallback(() => {
+    setEditingCategoryId(null);
     setCategoryNameInput('');
     setCategoryDaySelections([]);
+    setCategoryModalVisible(true);
+  }, []);
+
+  const openEditCategoryModal = useCallback((category) => {
+    setEditingCategoryId(category.id);
+    setCategoryNameInput(category.name);
+    setCategoryDaySelections(Array.isArray(category.days) ? category.days : []);
     setCategoryModalVisible(true);
   }, []);
 
@@ -2361,10 +2421,18 @@ function RootApp() {
       return;
     }
     const days = categoryDaySelections.length > 0 ? [...categoryDaySelections].sort((a, b) => a - b) : null;
-    const newCategory = { id: uid(), name: trimmed, days };
-    persistCategories([...categories, newCategory], newCategory.id);
+
+    if (editingCategoryId) {
+      const nextCategories = categories.map((c) =>
+        c.id === editingCategoryId ? { ...c, name: trimmed, days } : c
+      );
+      persistCategories(nextCategories, activeCategoryId);
+    } else {
+      const newCategory = { id: uid(), name: trimmed, days };
+      persistCategories([...categories, newCategory], newCategory.id);
+    }
     setCategoryModalVisible(false);
-  }, [categoryNameInput, categoryDaySelections, categories, persistCategories]);
+  }, [categoryNameInput, categoryDaySelections, categories, editingCategoryId, activeCategoryId, persistCategories]);
 
   const selectCategory = useCallback(
     (id) => {
@@ -2914,6 +2982,7 @@ function RootApp() {
         onSelectCategory={selectCategory}
         onAddCategory={openAddCategoryModal}
         onDeleteCategory={deleteCategory}
+        onEditCategory={openEditCategoryModal}
         onSetStatus={setStatus}
         activeTimers={activeTimers}
         onToggleTimer={toggleTimer}
@@ -3309,7 +3378,7 @@ function RootApp() {
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { paddingBottom: insets.bottom + 20 }]}>
               <View style={styles.modalHandle} />
-              <Text style={styles.modalTitle}>بخش جدید</Text>
+              <Text style={styles.modalTitle}>{editingCategoryId ? 'ویرایش بخش' : 'بخش جدید'}</Text>
 
               <Text style={styles.inputLabel}>نام بخش</Text>
               <TextInput
@@ -3347,7 +3416,7 @@ function RootApp() {
                   activeOpacity={0.7}
                   onPress={submitNewCategory}
                 >
-                  <Text style={styles.modalButtonCreateText}>ایجاد</Text>
+                  <Text style={styles.modalButtonCreateText}>{editingCategoryId ? 'ذخیره' : 'ایجاد'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -3690,6 +3759,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  catEditBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
+  },
   catDeleteBtn: {
     width: 22,
     height: 22,
@@ -3783,6 +3861,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontWeight: '500',
     textAlign: 'right',
+  },
+  todaySummaryDoneText: {
+    color: COLORS.success,
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+    paddingVertical: 6,
   },
 
   /* ---- Empty State ---- */
