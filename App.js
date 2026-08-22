@@ -463,6 +463,12 @@ async function scheduleHabitReminder(habits, categories, settings) {
   const body = buildReminderBody(incomplete);
   const seconds = Math.max(60, Math.round((settings.intervalMinutes || 30) * 60));
 
+  // عمداً از repeats:true استفاده نمی‌کنیم — روی برخی گوشی‌ها/نسخه‌های
+  // اندروید، لغوکردن یک نوتیف تکرارشونده به‌درستی کار نمی‌کند و حتی بعد از
+  // خاموش‌کردن یادآور در تنظیمات، همچنان ارسال می‌شود. به‌جایش یک نوتیف
+  // یک‌باره (repeats:false) با یک identifier ثابت زمان‌بندی می‌شود؛ لغوکردن
+  // نوتیف یک‌باره همیشه قابل‌اعتماد است، و همین identifier ثابت باعث
+  // می‌شود هیچ‌وقت روی هم تلنبار نشود.
   try {
     await Notifications.scheduleNotificationAsync({
       identifier: NOTIF_REMINDER_ID,
@@ -474,7 +480,7 @@ async function scheduleHabitReminder(habits, categories, settings) {
         data: { kind: 'reminder' },
         android: { channelId: NOTIF_CHANNEL_ID },
       },
-      trigger: { type: 'timeInterval', seconds, repeats: true },
+      trigger: { type: 'timeInterval', seconds, repeats: false },
     });
   } catch (e) {
     console.warn('Failed to schedule habit reminder', e);
@@ -2115,6 +2121,11 @@ function RootApp() {
     categoriesRef.current = categories;
   }, [categories]);
 
+  const notifSettingsRef = useRef(notifSettings);
+  useEffect(() => {
+    notifSettingsRef.current = notifSettings;
+  }, [notifSettings]);
+
   // شنونده‌ی سراسری برای دکمه‌ی «تایمر عادت رندوم» روی نوتیفیکیشن دائمی.
   // توجه: این listener فقط تا وقتی برنامه (فوری یا در پس‌زمینه) زنده است کار
   // می‌کند — اگر برنامه کامل بسته/force-stop شده باشد، اندروید JS را اجرا
@@ -2157,26 +2168,18 @@ function RootApp() {
     };
   }, []);
 
-  // هر بار یک نوتیف یادآور جدید واقعاً نمایش داده می‌شود، نسخه‌های قبلی‌اش را
-  // از نوار اعلان‌ها پاک می‌کنیم — چون قبلاً هر ۲۰۰ نوتیف زمان‌بندی‌شده
-  // identifier جدا داشتند و روی هم تلنبار می‌شدند؛ همین تلنبارشدن باعث
-  // می‌شد اندروید با فاصله‌های طولانی‌تر (مثل ۱۵ دقیقه) دیگر آن‌ها را
-  // فوری/urgent نشان ندهد.
+  // هر بار نوتیف یادآور واقعاً نمایش داده می‌شود، بلافاصله نوبت بعدی را
+  // (با همان identifier ثابت، به‌صورت یک‌باره) دوباره زمان‌بندی می‌کنیم —
+  // این‌طوری یادآور بدون نیاز به باز کردن مجدد برنامه ادامه پیدا می‌کند،
+  // ولی چون هربار فقط یک نوتیف یک‌باره در صف است (نه تکرارشونده)، خاموش
+  // کردنش از تنظیمات همیشه قابل‌اعتماد کار می‌کند و هیچ‌وقت هم تلنبار نمی‌شود.
   useEffect(() => {
     const sub = Notifications.addNotificationReceivedListener(async (notification) => {
       if (notification.request.content.data?.kind !== 'reminder') return;
       try {
-        const presented = await Notifications.getPresentedNotificationsAsync();
-        const stale = presented.filter(
-          (n) =>
-            n.request.content.data?.kind === 'reminder' &&
-            n.request.identifier !== notification.request.identifier
-        );
-        await Promise.all(
-          stale.map((n) => Notifications.dismissNotificationAsync(n.request.identifier))
-        );
+        await scheduleHabitReminder(habitsRef.current, categoriesRef.current, notifSettingsRef.current);
       } catch (e) {
-        console.warn('Failed to clear previous reminder notifications', e);
+        console.warn('Failed to reschedule next habit reminder', e);
       }
     });
     return () => sub.remove();
